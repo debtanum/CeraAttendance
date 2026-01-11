@@ -1,0 +1,50 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#F5F7FB" />
+    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="CardAltBackgroundBrush" Color="#F1F5F9" />
+    <SolidColorBrush x:Key="BorderBrushColor" Color="#D8DCE3" />
+    <SolidColorBrush x:Key="TextBrush" Color="#0F172A" />
+    <SolidColorBrush x:Key="MutedTextBrush" Color="#6B7280" />
+
+    <SolidColorBrush x:Key="AccentBrush" Color="#2563EB" />
+    <SolidColorBrush x:Key="AccentTextBrush" Color="#FFFFFF" />
+
+    <SolidColorBrush x:Key="NeutralButtonBrush" Color="#E5E7EB" />
+    <SolidColorBrush x:Key="NeutralButtonBorderBrush" Color="#D1D5DB" />
+    <SolidColorBrush x:Key="NeutralButtonTextBrush" Color="#111827" />
+
+    <SolidColorBrush x:Key="PrimaryButtonBrush" Color="#2563EB" />
+    <SolidColorBrush x:Key="PrimaryButtonBorderBrush" Color="#1D4ED8" />
+    <SolidColorBrush x:Key="PrimaryButtonTextBrush" Color="#FFFFFF" />
+
+    <SolidColorBrush x:Key="DangerButtonBrush" Color="#EF4444" />
+    <SolidColorBrush x:Key="DangerButtonBorderBrush" Color="#DC2626" />
+    <SolidColorBrush x:Key="DangerButtonTextBrush" Color="#FFFFFF" />
+
+    <SolidColorBrush x:Key="SuccessButtonBrush" Color="#22C55E" />
+    <SolidColorBrush x:Key="SuccessButtonBorderBrush" Color="#16A34A" />
+    <SolidColorBrush x:Key="SuccessButtonTextBrush" Color="#FFFFFF" />
+
+    <SolidColorBrush x:Key="InputBackgroundBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="InputBorderBrush" Color="#CBD5E1" />
+    <SolidColorBrush x:Key="InputForegroundBrush" Color="#0F172A" />
+
+    <SolidColorBrush x:Key="ToggleTrackOffBrush" Color="#E5E7EB" />
+    <SolidColorBrush x:Key="ToggleTrackOnBrush" Color="#2563EB" />
+    <SolidColorBrush x:Key="ToggleTrackBorderBrush" Color="#CBD5E1" />
+    <SolidColorBrush x:Key="ToggleThumbBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="ToggleThumbBorderBrush" Color="#D1D5DB" />
+
+    <SolidColorBrush x:Key="SyncIconBrush" Color="#1F2937" />
+
+    <SolidColorBrush x:Key="OverlayBackgroundBrush" Color="#B3FFFFFF" />
+    <SolidColorBrush x:Key="OverlaySpinnerBrush" Color="#0F172A" />
+    <SolidColorBrush x:Key="OverlayTextBrush" Color="#0F172A" />
+
+    <Color x:Key="BubbleBackgroundColor">#F2F4F8</Color>
+    <Color x:Key="BubbleBackgroundHoverColor">#E8ECF4</Color>
+    <Color x:Key="BubbleForegroundColor">#111827</Color>
+    <Color x:Key="BubbleDimForegroundColor">#9CA3AF</Color>
+    <Color x:Key="BubbleBorderColor">#D8DCE3</Color>
+</ResourceDictionary>

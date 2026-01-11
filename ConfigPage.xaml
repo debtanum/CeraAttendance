@@ -1,0 +1,112 @@
+<UserControl x:Class="CeraRegularize.Pages.ConfigPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             d:DesignHeight="380" d:DesignWidth="400">
+	<Grid>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="*" />
+			<RowDefinition Height="Auto" />
+		</Grid.RowDefinitions>
+		<ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+			<StackPanel Margin="12" Orientation="Vertical">
+				<GroupBox Header="Configuration">
+					<StackPanel Margin="10">
+						<Grid Margin="0,0,0,8" Style="{StaticResource RowSpacingGridStyle}">
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="110" />
+								<ColumnDefinition Width="*" />
+							</Grid.ColumnDefinitions>
+							<Grid.RowDefinitions>
+								<RowDefinition Height="Auto" />
+								<RowDefinition Height="Auto" />
+								<RowDefinition Height="Auto" />
+								<RowDefinition Height="Auto" />
+								<RowDefinition Height="Auto" />
+							</Grid.RowDefinitions>
+
+							<TextBlock Grid.Column="0"
+                                   Text="Shift:"
+                                   VerticalAlignment="Center"
+                                   FontWeight="SemiBold" />
+							<ComboBox x:Name="ShiftComboBox"
+                                  Grid.Row="0"
+                                  Grid.Column="1"
+                                  SelectedValuePath="Tag"
+                                  MinWidth="180"
+                                  Height="28">
+								<ComboBoxItem Content="Select" Tag="" />
+								<ComboBoxItem Content="08:00am to 08:00pm (S01)" Tag="S01" />
+								<ComboBoxItem Content="08:00pm to 08:00am (S03)" Tag="S03" />
+								<ComboBoxItem Content="09:00am to 06:00pm (S02)" Tag="S02" />
+								<ComboBoxItem Content="General (GEN)" Tag="GEN" />
+							</ComboBox>
+
+							<TextBlock Grid.Row="1"
+                                   Grid.Column="0"
+                                   Text="In Time:"
+                                   VerticalAlignment="Center"
+                                   FontWeight="SemiBold" />
+							<TextBox x:Name="InTimeBox"
+                                 Grid.Row="1"
+                                 Grid.Column="1"
+                                 MinWidth="120"
+                                 Height="28" />
+
+							<TextBlock Grid.Row="2"
+                                   Grid.Column="0"
+                                   Text="Out Time:"
+                                   VerticalAlignment="Center"
+                                   FontWeight="SemiBold" />
+							<TextBox x:Name="OutTimeBox"
+                                 Grid.Row="2"
+                                 Grid.Column="1"
+                                 MinWidth="120"
+                                 Height="28" />
+
+							<TextBlock Grid.Row="3"
+                                   Grid.Column="0"
+                                   Text="WFO Remarks:"
+                                   VerticalAlignment="Center"
+                                   FontWeight="SemiBold" />
+							<TextBox x:Name="WfoRemarksBox"
+                                 Grid.Row="3"
+                                 Grid.Column="1"
+                                 Height="28" />
+
+							<TextBlock Grid.Row="4"
+                                   Grid.Column="0"
+                                   Text="WFH Remarks:"
+                                   VerticalAlignment="Center"
+                                   FontWeight="SemiBold" />
+							<TextBox x:Name="WfhRemarksBox"
+                                 Grid.Row="4"
+                                 Grid.Column="1"
+                                 Height="28" />
+						</Grid>
+
+					</StackPanel>
+				</GroupBox>
+			</StackPanel>
+		</ScrollViewer>
+		<Border Grid.Row="1"
+                Background="{DynamicResource PanelBackgroundBrush}"
+                Padding="12"
+                BorderThickness="0,1,0,0"
+                BorderBrush="{DynamicResource DividerBrush}">
+			<StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+				<Button x:Name="ResetButton"
+                        Content="Reset"
+                        Width="80"
+                        Margin="0,0,6,0"
+                        Style="{StaticResource NeutralButtonStyle}" Height="28" />
+				<Button x:Name="SaveButton"
+                        Content="Save"
+                        Width="80"
+                        Style="{StaticResource PrimaryButtonStyle}" Height="28" />
+			</StackPanel>
+		</Border>
+	</Grid>
+</UserControl>
