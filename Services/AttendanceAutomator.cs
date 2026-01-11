@@ -1773,6 +1773,7 @@ namespace CeraRegularize.Services
             {
                 if (_playwright == null)
                 {
+                    await PlaywrightInstaller.EnsureInstalledAsync().ConfigureAwait(false);
                     _playwright = await Playwright.CreateAsync().ConfigureAwait(false);
                 }
 

@@ -40,6 +40,7 @@ namespace CeraRegularize
         private bool _loginVerified;
         private bool _profileFetchRunning;
         private ProfileSummary? _profileSummary;
+        private bool _playwrightReady;
 
         public MainWindow()
         {
@@ -82,6 +83,7 @@ namespace CeraRegularize
             Loaded += MainWindow_Loaded;
             InitializeTrayIcon();
             _loginVerified = false;
+            _playwrightReady = false;
             TopBarControl.SetMenuState(false);
             TopBarControl.Status = "offline";
         }
@@ -89,9 +91,15 @@ namespace CeraRegularize
         private async void MainWindow_Loaded(object? sender, RoutedEventArgs e)
         {
             PositionBottomRight();
-            StartSessionTimer();
             AppLogger.LogInfo("MainWindow loaded", nameof(MainWindow));
-            await AttemptAutoLoginAsync();
+            await EnsurePlaywrightReadyAsync().ConfigureAwait(true);
+            if (!_playwrightReady)
+            {
+                return;
+            }
+
+            StartSessionTimer();
+            await AttemptAutoLoginAsync().ConfigureAwait(true);
         }
 
         private void TopBarControl_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -188,6 +196,38 @@ namespace CeraRegularize
             var workArea = SystemParameters.WorkArea;
             Left = Math.Max(workArea.Left, workArea.Right - ActualWidth - 12);
             Top = Math.Max(workArea.Top, workArea.Bottom - ActualHeight - 12);
+        }
+
+        private async Task EnsurePlaywrightReadyAsync()
+        {
+            if (PlaywrightInstaller.IsInstalled())
+            {
+                _playwrightReady = true;
+                return;
+            }
+
+            ShowOverlay("Setting Up...");
+            try
+            {
+                AppLogger.LogInfo("Playwright setup started", nameof(MainWindow));
+                await PlaywrightInstaller.EnsureInstalledAsync().ConfigureAwait(true);
+                AppLogger.LogInfo("Playwright setup completed", nameof(MainWindow));
+                _playwrightReady = true;
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogError("Playwright setup failed", ex, nameof(MainWindow));
+                System.Windows.MessageBox.Show(
+                    $"Unable to setup browser automation: {ex.Message}",
+                    "CeraRegularize",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                _playwrightReady = false;
+            }
+            finally
+            {
+                HideOverlay();
+            }
         }
 
         private void NavigateToHome()
@@ -288,6 +328,16 @@ namespace CeraRegularize
 
         private async void LoginPage_LoginRequested(object? sender, Pages.LoginRequestedEventArgs e)
         {
+            if (!_playwrightReady)
+            {
+                System.Windows.MessageBox.Show(
+                    "Please wait while we finish setting up the browser automation.",
+                    "CeraRegularize",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
             AppLogger.LogInfo("Login requested", nameof(MainWindow));
             ShowOverlay("Logging...");
             try
@@ -473,6 +523,11 @@ namespace CeraRegularize
 
         private async Task AttemptAutoLoginAsync()
         {
+            if (!_playwrightReady)
+            {
+                return;
+            }
+
             if (_sessionCheckRunning)
             {
                 return;
@@ -540,6 +595,11 @@ namespace CeraRegularize
 
         private async void SessionTimer_Tick(object? sender, EventArgs e)
         {
+            if (!_playwrightReady)
+            {
+                return;
+            }
+
             if (_sessionCheckRunning)
             {
                 return;
