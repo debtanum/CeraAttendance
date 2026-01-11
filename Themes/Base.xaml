@@ -356,7 +356,7 @@
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="18">
-                        <Grid x:Name="IconContainer" Width="20" Height="20" RenderTransformOrigin="0.5,0.5">
+                        <Grid x:Name="IconContainer" Width="24" Height="24" RenderTransformOrigin="0.5,0.5">
                             <Grid.RenderTransform>
                                 <RotateTransform x:Name="SyncRotate" Angle="0" />
                             </Grid.RenderTransform>

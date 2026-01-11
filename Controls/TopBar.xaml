@@ -87,12 +87,11 @@
         </Button>
         <!-- Title -->
         <TextBlock Grid.Column="1"
-                   Text="CeraRegularize"
                    VerticalAlignment="Center"
-                   HorizontalAlignment="Center"
-                   FontWeight="SemiBold"
-                   FontSize="12"
-                   Foreground="{DynamicResource TextBrush}" />
+                   HorizontalAlignment="Left"
+                   FontWeight="Bold"
+                   FontSize="18"
+                   Foreground="{DynamicResource TextBrush}" Margin="97,0,0,0" ><Run FontSize="15.75" Text="CeraRegularize"/></TextBlock>
         <!-- Sync and close buttons -->
         <StackPanel Grid.Column="2"
                     Orientation="Horizontal"
