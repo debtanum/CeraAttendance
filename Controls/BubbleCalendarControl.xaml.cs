@@ -217,26 +217,65 @@ namespace CeraRegularize.Controls
         }
 
         /// <summary>
-        /// Update the legend counts for WFO/WFH based on current selections.
+        /// Update the legend counts based on attendance history.
         /// </summary>
         private void UpdateCounts()
         {
-            int wfo = 0;
-            int wfh = 0;
-            foreach (var mode in _dateModes.Values)
+            double wfo = 0;
+            double wfh = 0;
+            double other = 0;
+            double holiday = 0;
+            if (_attendanceOverlays != null && _attendanceOverlays.Count > 0)
             {
-                switch (mode)
+                var rangeStart = GetCeragonRangeStart(CurrentMonth);
+                var rangeEnd = GetCeragonRangeEnd(CurrentMonth);
+                foreach (var entry in _attendanceOverlays)
                 {
-                    case "wfo":
-                        wfo++;
-                        break;
-                    case "wfh":
-                        wfh++;
-                        break;
+                    if (entry.Key.Date < rangeStart || entry.Key.Date > rangeEnd)
+                    {
+                        continue;
+                    }
+
+                    AddCategory(entry.Value?.Item1, ref wfo, ref wfh, ref other, ref holiday);
+                    AddCategory(entry.Value?.Item2, ref wfo, ref wfh, ref other, ref holiday);
                 }
             }
-            WfoCountText.Text = $"WFO: {wfo}";
-            WfhCountText.Text = $"WFH: {wfh}";
+
+            WfoCountText.Text = $"WFO: {FormatCount(wfo)}";
+            WfhCountText.Text = $"WFH: {FormatCount(wfh)}";
+            OtherCountText.Text = $"Others: {FormatCount(other)}";
+            HolidayCountText.Text = $"Holiday: {FormatCount(holiday)}";
+        }
+
+        private static void AddCategory(string? category, ref double wfo, ref double wfh, ref double other, ref double holiday)
+        {
+            var value = (category ?? string.Empty).Trim().ToLowerInvariant();
+            if (value == AttendanceHistoryCategories.Wfo)
+            {
+                wfo += 0.5;
+            }
+            else if (value == AttendanceHistoryCategories.Wfh)
+            {
+                wfh += 0.5;
+            }
+            else if (value == AttendanceHistoryCategories.Other)
+            {
+                other += 0.5;
+            }
+            else if (value == AttendanceHistoryCategories.Holiday)
+            {
+                holiday += 0.5;
+            }
+        }
+
+        private static string FormatCount(double value)
+        {
+            if (Math.Abs(value - Math.Round(value)) < 0.0001)
+            {
+                return value.ToString("0", CultureInfo.InvariantCulture);
+            }
+
+            return value.ToString("0.##", CultureInfo.InvariantCulture);
         }
 
         public void SetSelectionMode(string mode)

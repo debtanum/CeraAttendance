@@ -43,7 +43,7 @@
                         Width="80"
                         Style="{StaticResource SuccessButtonStyle}"
                         Click="SubmitButton_Click"
-                        IsEnabled="False" />
+                        IsEnabled="False" Height="28" />
             </StackPanel>
         </Grid>
     </Grid>

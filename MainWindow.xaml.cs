@@ -3,8 +3,11 @@ using CeraRegularize.Services;
 using CeraRegularize.Stores;
 using CeraRegularize.Themes;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
+using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -46,6 +49,7 @@ namespace CeraRegularize
         {
             InitializeComponent();
             AppLogger.LogInfo("MainWindow initializing", nameof(MainWindow));
+            ToastNotificationService.Initialize();
             // Instantiate pages once and reuse them when switching
             _loginPage = new Pages.LoginPage();
             _homePage = new Pages.HomePage();
@@ -424,12 +428,8 @@ namespace CeraRegularize
                 AppLogger.LogInfo($"Submitting attendance: {selections.Count} date(s)", nameof(MainWindow));
                 await _automator.RegularizeDatesAsync(selections, statusCallback: null).ConfigureAwait(true);
                 _homePage.ClearSelections();
-                await RefreshAttendanceHistoryAsync("submit", true).ConfigureAwait(true);
-                System.Windows.MessageBox.Show(
-                    "Attendance submitted for selected dates.",
-                    "CeraRegularize",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                var snapshot = await RefreshAttendanceHistoryAsync("submit", true).ConfigureAwait(true);
+                NotifySubmissionResult(selections, snapshot);
             }
             catch (Exception ex)
             {
@@ -482,16 +482,16 @@ namespace CeraRegularize
             await RefreshAttendanceHistoryAsync("auto", false).ConfigureAwait(true);
         }
 
-        private async Task RefreshAttendanceHistoryAsync(string reason, bool force)
+        private async Task<AttendanceHistorySnapshot?> RefreshAttendanceHistoryAsync(string reason, bool force)
         {
             if (_historyRefreshRunning)
             {
-                return;
+                return null;
             }
 
             if (!force && !_automator.LoginVerified)
             {
-                return;
+                return null;
             }
 
             _historyRefreshRunning = true;
@@ -503,22 +503,164 @@ namespace CeraRegularize
                 if (snapshot == null)
                 {
                     AppLogger.LogWarning("Attendance history refresh skipped", nameof(MainWindow));
-                    return;
+                    return null;
                 }
 
                 AttendanceHistoryStore.SaveSnapshot(snapshot);
                 _homePage.ApplyAttendanceOverlays(AttendanceHistoryStore.ToOverlayMap(snapshot));
                 AppLogger.LogInfo("Attendance history refreshed", nameof(MainWindow));
+                return snapshot;
             }
             catch (Exception ex)
             {
                 AppLogger.LogError($"Attendance history refresh failed ({reason})", ex, nameof(MainWindow));
+                return null;
             }
             finally
             {
                 TopBarControl.SetSyncing(false);
                 _historyRefreshRunning = false;
             }
+        }
+
+        private void NotifySubmissionResult(
+            IReadOnlyList<(DateTime date, string mode, string span)> selections,
+            AttendanceHistorySnapshot? snapshot)
+        {
+            if (snapshot?.Entries == null)
+            {
+                return;
+            }
+
+            var applied = new List<string>();
+            var failed = new List<string>();
+            foreach (var selection in selections)
+            {
+                var label = FormatSelectionLabel(selection);
+                if (IsSelectionApplied(snapshot, selection))
+                {
+                    applied.Add(label);
+                }
+                else
+                {
+                    failed.Add(label);
+                }
+            }
+
+            if (applied.Count > 0)
+            {
+                ShowUserNotification(
+                    "Attendance applied",
+                    $"Applied: {FormatNotificationList(applied)}",
+                    Forms.ToolTipIcon.Info);
+            }
+
+            if (failed.Count > 0)
+            {
+                ShowUserNotification(
+                    "Attendance not applied",
+                    $"Failed: {FormatNotificationList(failed)}",
+                    Forms.ToolTipIcon.Warning);
+            }
+        }
+
+        private static bool IsSelectionApplied(
+            AttendanceHistorySnapshot snapshot,
+            (DateTime date, string mode, string span) selection)
+        {
+            var expected = ModeToCategory(selection.mode);
+            if (string.IsNullOrWhiteSpace(expected))
+            {
+                return false;
+            }
+
+            var key = selection.date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            if (!snapshot.Entries.TryGetValue(key, out var entry) || entry == null)
+            {
+                return false;
+            }
+
+            var first = (entry.First ?? AttendanceHistoryCategories.None).Trim().ToLowerInvariant();
+            var second = (entry.Second ?? AttendanceHistoryCategories.None).Trim().ToLowerInvariant();
+            var span = selection.span ?? AttendanceAutomator.DayLengthFull;
+
+            if (string.Equals(span, AttendanceAutomator.DayLengthFirstHalf, StringComparison.OrdinalIgnoreCase))
+            {
+                return first == expected;
+            }
+
+            if (string.Equals(span, AttendanceAutomator.DayLengthSecondHalf, StringComparison.OrdinalIgnoreCase))
+            {
+                return second == expected;
+            }
+
+            return first == expected && second == expected;
+        }
+
+        private static string ModeToCategory(string mode)
+        {
+            var key = (mode ?? string.Empty).Trim().ToLowerInvariant();
+            return key switch
+            {
+                "wfo" => AttendanceHistoryCategories.Wfo,
+                "wfh" => AttendanceHistoryCategories.Wfh,
+                _ => string.Empty,
+            };
+        }
+
+        private static string FormatSelectionLabel((DateTime date, string mode, string span) selection)
+        {
+            var dateLabel = selection.date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            var modeLabel = string.IsNullOrWhiteSpace(selection.mode) ? "mode" : selection.mode.ToUpperInvariant();
+            var spanLabel = selection.span switch
+            {
+                AttendanceAutomator.DayLengthFirstHalf => "1st half",
+                AttendanceAutomator.DayLengthSecondHalf => "2nd half",
+                _ => "full day",
+            };
+
+            return $"{dateLabel} ({modeLabel}, {spanLabel})";
+        }
+
+        private static string FormatNotificationList(IReadOnlyList<string> items, int maxItems = 6)
+        {
+            if (items.Count <= maxItems)
+            {
+                return string.Join(", ", items);
+            }
+
+            var preview = items.Take(maxItems);
+            var remaining = items.Count - maxItems;
+            return $"{string.Join(", ", preview)} (+{remaining} more)";
+        }
+
+        private void ShowTrayNotification(string title, string message, Forms.ToolTipIcon icon)
+        {
+            if (_trayIcon == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _trayIcon.BalloonTipTitle = title;
+                _trayIcon.BalloonTipText = message;
+                _trayIcon.BalloonTipIcon = icon;
+                _trayIcon.ShowBalloonTip(4500);
+            }
+            catch
+            {
+            }
+        }
+
+        private void ShowUserNotification(string title, string message, Forms.ToolTipIcon icon)
+        {
+            if (ToastNotificationService.TryShow(title, message))
+            {
+                return;
+            }
+
+            ShowTrayNotification(title, message, icon);
         }
 
         private async Task AttemptAutoLoginAsync()
@@ -647,6 +789,15 @@ namespace CeraRegularize
                 var (ok, message) = await EnsureSessionAsync(forceLogin: wantsAutoLogin, allowUnverified: wantsAutoLogin)
                     .ConfigureAwait(true);
                 UpdateSessionIndicators(ok, message, persistConfig: true, navigateOnSuccess: false, navigateOnFailure: true);
+                if (ok && wantsAutoLogin)
+                {
+                    if (overlayShown)
+                    {
+                        HideOverlay();
+                        overlayShown = false;
+                    }
+                    await RefreshAttendanceHistoryAsync("login", true).ConfigureAwait(true);
+                }
             }
             finally
             {

@@ -23,19 +23,27 @@
         <DockPanel Grid.Row="0" Margin="0,0,0,4">
             <Button x:Name="PrevMonthButton"
                     Content="&lt;"
-                    Width="26"
-                    Height="26"
-                    Margin="4,0,0,0"
+                    Width="36"
+                    Height="36"
+                    Margin="0"
                     Padding="0"
+                    FontSize="18"
+                    FontWeight="Bold"
+                    Background="Transparent"
+                    BorderBrush="Transparent"
                     Click="PrevMonthButton_Click"
                     HorizontalAlignment="Left" />
             <Button x:Name="NextMonthButton"
                     Content="&gt;"
-                    Width="26"
-                    Height="26"
-                    Margin="0,0,4,0"
+                    Width="36"
+                    Height="36"
+                    Margin="0"
                     DockPanel.Dock="Right"
                     Padding="0"
+                    FontSize="18"
+                    FontWeight="Bold"
+                    Background="Transparent"
+                    BorderBrush="Transparent"
                     Click="NextMonthButton_Click"
                     HorizontalAlignment="Right" />
             <TextBlock x:Name="MonthLabel"
@@ -61,11 +69,15 @@
         <!-- Day grid: 6 rows of 7 columns -->
         <UniformGrid x:Name="DayGrid" Grid.Row="2" Columns="7" Rows="6" />
         <!-- Legend showing counts for each mode -->
-        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="4,4,4,0" VerticalAlignment="Center">
-            <Ellipse Fill="#22C55E" Width="10" Height="10" Margin="0,0,4,0" />
+        <WrapPanel Grid.Row="3" Margin="4,4,4,0" VerticalAlignment="Center">
+            <Ellipse Fill="#00B816" Width="10" Height="10" Margin="0,0,4,0" />
             <TextBlock x:Name="WfoCountText" Text="WFO: 0" Foreground="{DynamicResource MutedTextBrush}" FontSize="11" Margin="0,0,12,0" />
-            <Ellipse Fill="#0B97F5" Width="10" Height="10" Margin="0,0,4,0" />
-            <TextBlock x:Name="WfhCountText" Text="WFH: 0" Foreground="{DynamicResource MutedTextBrush}" FontSize="11" />
-        </StackPanel>
+            <Ellipse Fill="#00A1F7" Width="10" Height="10" Margin="0,0,4,0" />
+            <TextBlock x:Name="WfhCountText" Text="WFH: 0" Foreground="{DynamicResource MutedTextBrush}" FontSize="11" Margin="0,0,12,0" />
+            <Ellipse Fill="#FFCB35" Width="10" Height="10" Margin="0,0,4,0" />
+            <TextBlock x:Name="OtherCountText" Text="Others: 0" Foreground="{DynamicResource MutedTextBrush}" FontSize="11" Margin="0,0,12,0" />
+            <Ellipse Fill="#FFE9C3" Width="10" Height="10" Margin="0,0,4,0" />
+            <TextBlock x:Name="HolidayCountText" Text="Holiday: 0" Foreground="{DynamicResource MutedTextBrush}" FontSize="11" />
+        </WrapPanel>
     </Grid>
 </UserControl>

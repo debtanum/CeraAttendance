@@ -15,9 +15,10 @@ namespace CeraRegularize.Controls
     {
         // Colors representing modes and default bubble appearance. Theme resources
         // provide the actual palette so light/dark stay consistent.
-        private static readonly Media.Color ModeWFO = (Media.Color)Media.ColorConverter.ConvertFromString("#B5EF8A");
-        private static readonly Media.Color ModeWFH = (Media.Color)Media.ColorConverter.ConvertFromString("#BBE6E4");
-        private static readonly Media.Color AttendanceOther = (Media.Color)Media.ColorConverter.ConvertFromString("#EAEFB1");
+        private static readonly Media.Color ModeWFO = (Media.Color)Media.ColorConverter.ConvertFromString("#00B816");
+        private static readonly Media.Color ModeWFH = (Media.Color)Media.ColorConverter.ConvertFromString("#00A1F7");
+        private static readonly Media.Color AttendanceOther = (Media.Color)Media.ColorConverter.ConvertFromString("#FFCB35");
+        private static readonly Media.Color AttendanceHoliday = (Media.Color)Media.ColorConverter.ConvertFromString("#FFE9C3");
 
         private DateTime? _date;
         private bool _isCurrentMonth;
@@ -395,7 +396,7 @@ namespace CeraRegularize.Controls
                 return null;
             }
             var normalized = category.ToLowerInvariant();
-            if (normalized == "none" || normalized == "absent" || normalized == "weekend" || normalized == "holiday")
+            if (normalized == "none" || normalized == "absent" || normalized == "weekend")
             {
                 return null;
             }
@@ -403,6 +404,7 @@ namespace CeraRegularize.Controls
             {
                 "wfo" => ModeWFO,
                 "wfh" => ModeWFH,
+                "holiday" => AttendanceHoliday,
                 "other" => AttendanceOther,
                 _ => AttendanceOther,
             };
