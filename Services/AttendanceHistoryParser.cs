@@ -93,8 +93,29 @@ namespace CeraRegularize.Services
                     continue;
                 }
 
-                baseEntries[item.Key] = item.Value;
+                var overlayEntry = item.Value;
+                var merged = new AttendanceHistoryEntry
+                {
+                    First = MergeHalf(existing.First, overlayEntry.First),
+                    Second = MergeHalf(existing.Second, overlayEntry.Second),
+                    Source = "leave_status",
+                    HasAbsent = false,
+                };
+
+                baseEntries[item.Key] = merged;
             }
+        }
+
+        private static string? MergeHalf(string? original, string? overlay)
+        {
+            if (string.IsNullOrWhiteSpace(original) || string.IsNullOrWhiteSpace(overlay))
+            {
+                return original;
+            }
+
+            return original.Equals(AttendanceHistoryCategories.Absent, StringComparison.OrdinalIgnoreCase)
+                ? overlay
+                : original;
         }
 
         private IEnumerable<string> CycleOptionValues()

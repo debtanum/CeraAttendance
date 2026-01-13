@@ -24,19 +24,19 @@
         <Path x:Name="BottomHalf" Fill="Transparent" Visibility="Collapsed" />
         <!-- Outer ring to indicate the assigned mode (WFO/WFH) -->
         <Ellipse x:Name="ModeRing"
-                 StrokeThickness="5"
+                 StrokeThickness="3"
                  Stroke="Transparent"
                  Fill="Transparent"
                  Visibility="Collapsed" />
         <Path x:Name="ModeRingTop"
-              StrokeThickness="5"
+              StrokeThickness="3"
               Stroke="Transparent"
               Fill="Transparent"
               StrokeStartLineCap="Round"
               StrokeEndLineCap="Round"
               Visibility="Collapsed" />
         <Path x:Name="ModeRingBottom"
-              StrokeThickness="5"
+              StrokeThickness="3"
               Stroke="Transparent"
               Fill="Transparent"
               StrokeStartLineCap="Round"

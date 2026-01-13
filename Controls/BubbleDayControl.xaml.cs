@@ -182,7 +182,7 @@ namespace CeraRegularize.Controls
         {
             // If no date, disable the control entirely.
             bool hasDate = _date.HasValue;
-            RootGrid.IsEnabled = hasDate && _isCurrentMonth && _isSelectable;
+            RootGrid.IsEnabled = hasDate;
             DayText.Visibility = hasDate ? Visibility.Visible : Visibility.Collapsed;
 
             // Background color: dim when out of month or date is null.
@@ -197,13 +197,15 @@ namespace CeraRegularize.Controls
             }
             else if (!_isCurrentMonth)
             {
-                bg = ResolveThemeColor("BubbleBackgroundColor", Media.Colors.Transparent);
+                bg = _isHovered
+                    ? ResolveThemeColor("BubbleBackgroundHoverColor", ResolveThemeColor("BubbleBackgroundColor", Media.Colors.Transparent))
+                    : ResolveThemeColor("BubbleBackgroundColor", Media.Colors.Transparent);
                 fg = ResolveThemeColor("BubbleDimForegroundColor", Media.Colors.Gray);
                 border = ResolveThemeColor("BubbleBorderColor", Media.Colors.Transparent);
             }
             else
             {
-                bg = _isHovered && _isSelectable
+                bg = _isHovered
                     ? ResolveThemeColor("BubbleBackgroundHoverColor", ResolveThemeColor("BubbleBackgroundColor", Media.Colors.Transparent))
                     : ResolveThemeColor("BubbleBackgroundColor", Media.Colors.Transparent);
                 fg = ResolveThemeColor("BubbleForegroundColor", Media.Colors.Black);
@@ -254,7 +256,7 @@ namespace CeraRegularize.Controls
                 ModeRingBottom.Visibility = Visibility.Collapsed;
             }
 
-            // Attendance overlay: update geometry separately; here toggle visibility.
+            // Attendance overlay: update geometry separately; here toggle visibility and hover opacity.
             if (hasDate && _attendanceState != null)
             {
                 TopHalf.Visibility = _attendanceState.Item1 != null ? Visibility.Visible : Visibility.Collapsed;
@@ -265,6 +267,10 @@ namespace CeraRegularize.Controls
                 TopHalf.Visibility = Visibility.Collapsed;
                 BottomHalf.Visibility = Visibility.Collapsed;
             }
+
+            var overlayOpacity = _isHovered ? 0.75 : 1.0;
+            TopHalf.Opacity = overlayOpacity;
+            BottomHalf.Opacity = overlayOpacity;
 
             // Notify any bound property changed (for DayString etc.)
             OnPropertyChanged(nameof(DayString));
@@ -365,10 +371,12 @@ namespace CeraRegularize.Controls
             Media.Color? firstCol = ResolveAttendanceColor(_attendanceState.Item1);
             Media.Color? secondCol = ResolveAttendanceColor(_attendanceState.Item2);
 
+            const double overlapDegrees = 1.0;
+            var halfOverlap = overlapDegrees / 2.0;
             // Build left (first) half geometry (180° to 360°) if color defined
             if (firstCol.HasValue)
             {
-                TopHalf.Data = BuildSector(180, 180);
+                TopHalf.Data = BuildSector(180 - halfOverlap, 180 + overlapDegrees);
                 TopHalf.Fill = new Media.SolidColorBrush(firstCol.Value);
                 TopHalf.Visibility = Visibility.Visible;
             }
@@ -379,7 +387,7 @@ namespace CeraRegularize.Controls
             // Build right (second) half geometry (0° to 180°)
             if (secondCol.HasValue)
             {
-                BottomHalf.Data = BuildSector(0, 180);
+                BottomHalf.Data = BuildSector(0 - halfOverlap, 180 + overlapDegrees);
                 BottomHalf.Fill = new Media.SolidColorBrush(secondCol.Value);
                 BottomHalf.Visibility = Visibility.Visible;
             }

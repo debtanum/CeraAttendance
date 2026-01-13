@@ -24,9 +24,26 @@ namespace CeraRegularize.Pages
             InitializeComponent();
             _state = SettingsStore.Load();
             _savedState = _state.Copy();
+            WireAccordionLogging();
             WireEvents();
             ApplyState();
             ToggleSaveButton();
+        }
+
+        private void WireAccordionLogging()
+        {
+            AttachAccordionLogging(AppearanceExpander, "Appearance");
+            AttachAccordionLogging(CalendarExpander, "Calendar Selection Style");
+            AttachAccordionLogging(SyncExpander, "Attendance Sync");
+            AttachAccordionLogging(DeveloperExpander, "Developer Tools");
+        }
+
+        private static void AttachAccordionLogging(Expander expander, string label)
+        {
+            expander.Expanded += (_, _) =>
+                AppLogger.LogDebug($"Settings accordion expanded: {label}", nameof(SettingsPage));
+            expander.Collapsed += (_, _) =>
+                AppLogger.LogDebug($"Settings accordion collapsed: {label}", nameof(SettingsPage));
         }
 
         private void WireEvents()

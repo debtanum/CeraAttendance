@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Media;
 using CeraRegularize.Logging;
 using CeraRegularize.Services;
@@ -102,6 +103,23 @@ namespace CeraRegularize.Controls
         private void NextMonthButton_Click(object sender, RoutedEventArgs e)
         {
             CurrentMonth = CurrentMonth.AddMonths(1);
+            RenderCalendar();
+        }
+
+        private void MonthLabel_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ClickCount < 2)
+            {
+                return;
+            }
+
+            var today = DateTime.Today;
+            if (CurrentMonth.Year == today.Year && CurrentMonth.Month == today.Month)
+            {
+                return;
+            }
+
+            CurrentMonth = new DateTime(today.Year, today.Month, 1);
             RenderCalendar();
         }
 

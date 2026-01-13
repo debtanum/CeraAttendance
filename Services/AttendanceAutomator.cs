@@ -1340,6 +1340,7 @@ namespace CeraRegularize.Services
             try
             {
                 await page.Locator("#MiddleContent_ddlLvType").SelectOptionAsync("G").ConfigureAwait(false);
+                await WaitForSubmissionProgressAsync(page).ConfigureAwait(false);
                 await WaitForPostbackAsync(page).ConfigureAwait(false);
                 await DismissPortalMessageAsync(page, 1500).ConfigureAwait(false);
             }
@@ -1352,7 +1353,9 @@ namespace CeraRegularize.Services
             {
                 var fromField = page.Locator("#MiddleContent_calLvFrom_textBox");
                 await fromField.FillAsync(dateStr).ConfigureAwait(false);
+                await WaitForSubmissionProgressAsync(page).ConfigureAwait(false);
                 await fromField.PressAsync("Tab").ConfigureAwait(false);
+                await WaitForSubmissionProgressAsync(page).ConfigureAwait(false);
                 await WaitForPostbackAsync(page).ConfigureAwait(false);
                 await DismissPortalMessageAsync(page, 1200).ConfigureAwait(false);
             }
@@ -1365,7 +1368,9 @@ namespace CeraRegularize.Services
             {
                 var toField = page.Locator("#MiddleContent_calLvTo_textBox");
                 await toField.FillAsync(dateStr).ConfigureAwait(false);
+                await WaitForSubmissionProgressAsync(page).ConfigureAwait(false);
                 await toField.PressAsync("Tab").ConfigureAwait(false);
+                await WaitForSubmissionProgressAsync(page).ConfigureAwait(false);
                 await WaitForPostbackAsync(page).ConfigureAwait(false);
                 await DismissPortalMessageAsync(page, 1200).ConfigureAwait(false);
             }
@@ -1377,6 +1382,7 @@ namespace CeraRegularize.Services
             try
             {
                 await page.Locator("#MiddleContent_ddlLvFromHDy").SelectOptionAsync(availabilityValue).ConfigureAwait(false);
+                await WaitForSubmissionProgressAsync(page).ConfigureAwait(false);
                 await WaitForPostbackAsync(page).ConfigureAwait(false);
                 await DismissPortalMessageAsync(page, 1200).ConfigureAwait(false);
             }
@@ -1391,7 +1397,7 @@ namespace CeraRegularize.Services
                 {
                     var remarksField = page.Locator("#MiddleContent_txtReason");
                     await remarksField.FillAsync(WfhRemarks).ConfigureAwait(false);
-                    await page.WaitForTimeoutAsync(200).ConfigureAwait(false);
+                    await WaitForPostbackAsync(page).ConfigureAwait(false);
                     var currentValue = await ReadLocatorValueAsync(remarksField).ConfigureAwait(false);
                     if (!string.IsNullOrWhiteSpace(currentValue))
                     {
@@ -1485,17 +1491,22 @@ namespace CeraRegularize.Services
                 await submitBtn.ClickAsync(new LocatorClickOptions { Timeout = 45000 }).ConfigureAwait(false);
                 try
                 {
-                    await page.WaitForLoadStateAsync(LoadState.NetworkIdle, new PageWaitForLoadStateOptions { Timeout = 45000 }).ConfigureAwait(false);
-                }
-                catch
-                {
-                }
-                await WaitForSubmissionProgressAsync(page).ConfigureAwait(false);
-                await page.WaitForTimeoutAsync(800).ConfigureAwait(false);
-                await DismissPortalMessageAsync(page, 70000).ConfigureAwait(false);
-                _pendingWfhRemarks = null;
-                AppLogger.LogInfo("WFH submit completed", nameof(AttendanceAutomator));
-                return true;
+                await page.WaitForLoadStateAsync(LoadState.NetworkIdle, new PageWaitForLoadStateOptions { Timeout = 45000 }).ConfigureAwait(false);
+            }
+            catch
+            {
+            }
+            await WaitForSubmissionProgressAsync(page).ConfigureAwait(false);
+            await page.WaitForTimeoutAsync(800).ConfigureAwait(false);
+            var portalMessage = await DismissPortalMessageAsync(page, 70000).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(portalMessage)
+                && portalMessage.Contains("Reason is mandatory for Work from home", StringComparison.OrdinalIgnoreCase))
+            {
+                AppLogger.LogWarning("WFH submit blocked: reason is mandatory for Work from home", nameof(AttendanceAutomator));
+            }
+            _pendingWfhRemarks = null;
+            AppLogger.LogInfo("WFH submit completed", nameof(AttendanceAutomator));
+            return true;
             }
             catch
             {
@@ -1681,7 +1692,7 @@ namespace CeraRegularize.Services
                     return;
                 }
                 await field.FillAsync(_pendingWfhRemarks).ConfigureAwait(false);
-                await page.WaitForTimeoutAsync(200).ConfigureAwait(false);
+                await WaitForPostbackAsync(page).ConfigureAwait(false);
             }
             catch
             {
