@@ -2,6 +2,9 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using System.Windows.Media;
 using Media = System.Windows.Media;
 
 namespace CeraRegularize.Controls
@@ -18,6 +21,7 @@ namespace CeraRegularize.Controls
     public partial class TopBar : System.Windows.Controls.UserControl, INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler? PropertyChanged;
+        private System.Windows.Point _menuAnchorScreenPoint;
 
         // Events raised when a menu option is selected
         public event EventHandler? HomeSelected;
@@ -123,9 +127,54 @@ namespace CeraRegularize.Controls
             // Show the context menu relative to the menu button
             if (MenuButton.ContextMenu != null)
             {
+                var point = Mouse.GetPosition(MenuButton);
+                _menuAnchorScreenPoint = ToScreenDip(MenuButton, point);
                 MenuButton.ContextMenu.PlacementTarget = MenuButton;
+                MenuButton.ContextMenu.Placement = PlacementMode.Custom;
+                MenuButton.ContextMenu.CustomPopupPlacementCallback = PlaceMenuPopup;
                 MenuButton.ContextMenu.IsOpen = true;
             }
+        }
+
+        private CustomPopupPlacement[] PlaceMenuPopup(System.Windows.Size popupSize, System.Windows.Size targetSize, System.Windows.Point offset)
+        {
+            var targetTopLeft = ToScreenDip(MenuButton, new System.Windows.Point(0, 0));
+            var workArea = SystemParameters.WorkArea;
+            var desiredX = _menuAnchorScreenPoint.X;
+            var desiredY = _menuAnchorScreenPoint.Y;
+
+            if (desiredX + popupSize.Width > workArea.Right)
+            {
+                desiredX = workArea.Right - popupSize.Width;
+            }
+            if (desiredX < workArea.Left)
+            {
+                desiredX = workArea.Left;
+            }
+            if (desiredY + popupSize.Height > workArea.Bottom)
+            {
+                desiredY = workArea.Bottom - popupSize.Height;
+            }
+            if (desiredY < workArea.Top)
+            {
+                desiredY = workArea.Top;
+            }
+
+            var relative = new System.Windows.Point(desiredX - targetTopLeft.X, desiredY - targetTopLeft.Y);
+            return new[] { new CustomPopupPlacement(relative, PopupPrimaryAxis.None) };
+        }
+
+        private static System.Windows.Point ToScreenDip(Visual visual, System.Windows.Point point)
+        {
+            var screenPoint = visual.PointToScreen(point);
+            var source = PresentationSource.FromVisual(visual);
+            if (source?.CompositionTarget != null)
+            {
+                var transform = source.CompositionTarget.TransformFromDevice;
+                screenPoint = transform.Transform(screenPoint);
+            }
+
+            return screenPoint;
         }
 
         private void HomeMenuItem_Click(object sender, RoutedEventArgs e)

@@ -590,13 +590,62 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ContextMenu">
-                    <Border Background="{TemplateBinding Background}"
+                    <Border x:Name="MenuBorder"
+                            Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="10"
-                            Padding="{TemplateBinding Padding}">
+                            Padding="{TemplateBinding Padding}"
+                            Opacity="0"
+                            RenderTransformOrigin="0,0">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="MenuScale" ScaleX="0.96" ScaleY="0.96" />
+                        </Border.RenderTransform>
                         <ItemsPresenter />
                     </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsOpen" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="MenuScale"
+                                                         Storyboard.TargetProperty="ScaleX"
+                                                         From="0.5"
+                                                         To="1"
+                                                         Duration="0:0:0.2" />
+                                        <DoubleAnimation Storyboard.TargetName="MenuScale"
+                                                         Storyboard.TargetProperty="ScaleY"
+                                                         From="0.5"
+                                                         To="1"
+                                                         Duration="0:0:0.2" />
+                                        <DoubleAnimation Storyboard.TargetName="MenuBorder"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         From="0"
+                                                         To="1"
+                                                         Duration="0:0:0.2" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="MenuScale"
+                                                         Storyboard.TargetProperty="ScaleX"
+                                                         To="0.5"
+                                                         Duration="0:0:0.25" />
+                                        <DoubleAnimation Storyboard.TargetName="MenuScale"
+                                                         Storyboard.TargetProperty="ScaleY"
+                                                         To="0.5"
+                                                         Duration="0:0:0.25" />
+                                        <DoubleAnimation Storyboard.TargetName="MenuBorder"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="0"
+                                                         Duration="0:0:0.25" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -626,6 +675,19 @@
                             <Setter TargetName="ItemBorder" Property="Opacity" Value="0.6" />
                         </Trigger>
                     </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="MenuSeparatorStyle" TargetType="Separator">
+        <Setter Property="Margin" Value="6,4" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Separator">
+                    <Border Height="1"
+                            Background="{DynamicResource BorderBrushColor}"
+                            Opacity="0.6" />
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
