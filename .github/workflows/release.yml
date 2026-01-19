@@ -24,7 +24,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-          dotnet-version: "9.0.x"
 
       - name: Set version from tag
         shell: pwsh
