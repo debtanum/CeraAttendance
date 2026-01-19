@@ -10,6 +10,8 @@ using DrawingIcon = System.Drawing.Icon;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -57,6 +59,10 @@ namespace CeraRegularize
         private bool _submissionInProgress;
         private bool _submissionCancelling;
         private CancellationTokenSource? _submissionCts;
+        private static readonly string CredentialLogSalt = Guid.NewGuid().ToString("N");
+        private string? _lastCredentialSource;
+        private string? _lastCredentialFingerprint;
+        private int _lastCredentialLength;
         private const string UpdateRepoUrl = "https://github.com/debtanum/CeraRegularize_Update";
         private const int AutoUpdateIntervalMinutes = 30;
 
@@ -1205,33 +1211,47 @@ namespace CeraRegularize
             out string password,
             out string errorMessage)
         {
-            username = config.Username?.Trim() ?? string.Empty;
-            password = config.Password ?? string.Empty;
-            if (!string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(password))
-            {
-                errorMessage = string.Empty;
-                return true;
-            }
-
-            if (!string.IsNullOrWhiteSpace(_automator.Username) && !string.IsNullOrWhiteSpace(_automator.Password))
-            {
-                username = _automator.Username!;
-                password = _automator.Password!;
-                errorMessage = string.Empty;
-                return true;
-            }
-
+            var autoUser = _automator.Username;
+            var autoPwd = _automator.Password;
             var envUser = Environment.GetEnvironmentVariable("ATT_USERNAME");
             var envPwd = Environment.GetEnvironmentVariable("ATT_PASSWORD");
-            if (!string.IsNullOrWhiteSpace(envUser) && !string.IsNullOrWhiteSpace(envPwd))
+            var cfgUser = config.Username?.Trim() ?? string.Empty;
+            var cfgPwd = config.Password ?? string.Empty;
+            var automatorOk = HasCredentials(autoUser, autoPwd);
+            var envOk = HasCredentials(envUser, envPwd);
+            var configOk = HasCredentials(cfgUser, cfgPwd);
+
+            if (automatorOk)
             {
-                username = envUser.Trim();
-                password = envPwd;
+                username = autoUser!;
+                password = autoPwd!;
                 errorMessage = string.Empty;
+                LogCredentialResolution("automator", username, password, configOk, envOk, automatorOk);
                 return true;
             }
 
+            if (envOk)
+            {
+                username = envUser!.Trim();
+                password = envPwd!;
+                errorMessage = string.Empty;
+                LogCredentialResolution("env", username, password, configOk, envOk, automatorOk);
+                return true;
+            }
+
+            if (configOk)
+            {
+                username = cfgUser;
+                password = cfgPwd;
+                errorMessage = string.Empty;
+                LogCredentialResolution("config", username, password, configOk, envOk, automatorOk);
+                return true;
+            }
+
+            username = cfgUser;
+            password = cfgPwd;
             errorMessage = "Credentials missing";
+            LogCredentialResolution("missing", string.Empty, string.Empty, configOk, envOk, automatorOk);
             return false;
         }
 
@@ -1259,6 +1279,7 @@ namespace CeraRegularize
             Environment.SetEnvironmentVariable("ATT_PASSWORD", password);
             _automator.Username = username;
             _automator.Password = password;
+            LogCredentialResolution("apply", username, password, false, false, true);
         }
 
         private void ApplyConfigToAutomator(ConfigState config)
@@ -1268,6 +1289,49 @@ namespace CeraRegularize
             _automator.OutTime = config.OutTime;
             _automator.WfoRemarks = config.WfoRemarks;
             _automator.WfhRemarks = config.WfhRemarks;
+        }
+
+        private static bool HasCredentials(string? user, string? pwd)
+        {
+            return !string.IsNullOrWhiteSpace(user) && !string.IsNullOrWhiteSpace(pwd);
+        }
+
+        private static string FingerprintForLog(string? value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return "none";
+            }
+
+            using var sha = SHA256.Create();
+            var bytes = Encoding.UTF8.GetBytes($"{CredentialLogSalt}:{value}");
+            var hash = sha.ComputeHash(bytes);
+            return Convert.ToHexString(hash.AsSpan(0, 4)).ToLowerInvariant();
+        }
+
+        private void LogCredentialResolution(
+            string source,
+            string username,
+            string password,
+            bool configPresent,
+            bool envPresent,
+            bool automatorPresent)
+        {
+            var pwdLen = string.IsNullOrEmpty(password) ? 0 : password.Length;
+            var fingerprint = FingerprintForLog(password);
+            if (string.Equals(_lastCredentialSource, source, StringComparison.Ordinal)
+                && _lastCredentialLength == pwdLen
+                && string.Equals(_lastCredentialFingerprint, fingerprint, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _lastCredentialSource = source;
+            _lastCredentialLength = pwdLen;
+            _lastCredentialFingerprint = fingerprint;
+            AppLogger.LogDebug(
+                $"Credential source={source} (config={configPresent}, env={envPresent}, automator={automatorPresent}, userLen={username.Length}, pwdLen={pwdLen}, pwdFp={fingerprint})",
+                nameof(MainWindow));
         }
 
         private void UpdateSessionIndicators(
