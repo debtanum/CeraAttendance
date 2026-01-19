@@ -1,0 +1,47 @@
+name: Build & Release (Windows)
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Publish (win-x64)
+        run: dotnet publish -c Release -r win-x64 --self-contained false
+
+      - name: Pack with vpk
+        run: >
+          vpk pack
+          --packId CeraRegularize
+          --packVersion 1.0.0
+          --packTitle "CeraRegularize"
+          --packDir "bin\Release\net10.0-windows10.0.19041.0\win-x64\publish"
+          --outputDir "ReleasePackages"
+
+      - name: List artifacts
+        run: dir ReleasePackages
+
+      - name: Create GitHub Release + Upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ReleasePackages/*
+          generate_release_notes: true
