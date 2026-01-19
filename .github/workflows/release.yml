@@ -19,24 +19,33 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
+          # If you have a global.json in the repo, you can remove this block
           dotnet-version: "9.0.x"
 
       - name: Restore dependencies
         run: dotnet restore
 
-      - name: Publish (win-x64)
+      # Restores vpk from .config/dotnet-tools.json (must be committed in repo)
+      - name: Restore dotnet tools (vpk)
+        run: dotnet tool restore
+
+      - name: Show dotnet tools
+        run: dotnet tool list
+
+      - name: Publish app (win-x64)
         run: dotnet publish -c Release -r win-x64 --self-contained false
 
+      # Use dotnet tool run to avoid PATH issues on the runner
       - name: Pack with vpk
         run: >
-          vpk pack
+          dotnet tool run vpk -- pack
           --packId CeraRegularize
           --packVersion 1.0.0
           --packTitle "CeraRegularize"
           --packDir "bin\Release\net10.0-windows10.0.19041.0\win-x64\publish"
           --outputDir "ReleasePackages"
 
-      - name: List artifacts
+      - name: List ReleasePackages
         run: dir ReleasePackages
 
       - name: Create GitHub Release + Upload assets
