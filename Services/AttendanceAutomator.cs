@@ -448,18 +448,20 @@ namespace CeraRegularize.Services
 
         public async Task RegularizeDatesAsync(
             IEnumerable<(DateTime date, string mode, string span)> assignments,
-            Action<string, string, bool>? statusCallback = null)
+            Action<string, string, bool>? statusCallback = null,
+            CancellationToken cancellationToken = default)
         {
             if (assignments == null)
             {
                 return;
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             AppLogger.LogInfo("RegularizeDatesAsync (grouped) started", nameof(AttendanceAutomator));
             foreach (var group in assignments.GroupBy(a => a.mode, StringComparer.OrdinalIgnoreCase))
             {
                 var entries = group.Select(item => (item.date, item.span)).ToList();
-                await RegularizeDatesAsync(entries, group.Key, statusCallback).ConfigureAwait(false);
+                await RegularizeDatesAsync(entries, group.Key, statusCallback, cancellationToken: cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -467,7 +469,8 @@ namespace CeraRegularize.Services
             IEnumerable<(DateTime date, string span)> targetEntries,
             string mode,
             Action<string, string, bool>? statusCallback = null,
-            bool? headless = null)
+            bool? headless = null,
+            CancellationToken cancellationToken = default)
         {
             RefreshConfigFromEnvironment();
             if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
@@ -516,10 +519,12 @@ namespace CeraRegularize.Services
             {
                 var page = await GetActivePageAsync(desiredHeadless).ConfigureAwait(false);
                 await EnsureSessionAsync(page, forceLogin: false).ConfigureAwait(false);
+                await CheckCancellationAsync(page, cancellationToken).ConfigureAwait(false);
 
                 if (modeKey == "wfo")
                 {
                     await EnsureHomePageAsync(page).ConfigureAwait(false);
+                    await CheckCancellationAsync(page, cancellationToken).ConfigureAwait(false);
                     if (await DismissDisabledPopupAsync(page).ConfigureAwait(false))
                     {
                         Emit(statusCallback, "Closed leftover disabled popup before starting WFO flow", "warning", false);
@@ -527,13 +532,16 @@ namespace CeraRegularize.Services
 
                     foreach (var date in allowedDates)
                     {
+                        await CheckCancellationAsync(page, cancellationToken).ConfigureAwait(false);
                         Emit(statusCallback, "Opening Regularize Attendance screen", "info", false);
                         await GoToRegularizeAsync(page).ConfigureAwait(false);
+                        await CheckCancellationAsync(page, cancellationToken).ConfigureAwait(false);
                         Emit(statusCallback, "Regularize page loaded", "info", true);
 
                         var span = lengthMap.TryGetValue(date, out var length) ? length : DayLengthFull;
                         Emit(statusCallback, $"Processing {date:yyyy-MM-dd} [{span}]", "info", false);
                         await SwitchMonthForDateAsync(page, date).ConfigureAwait(false);
+                        await CheckCancellationAsync(page, cancellationToken).ConfigureAwait(false);
                         if (!await OpenPopupForDateAsync(page, date).ConfigureAwait(false))
                         {
                             Emit(statusCallback, $"Skipping {date:yyyy-MM-dd}: date cell not found or disabled.", "warning", true);
@@ -549,6 +557,7 @@ namespace CeraRegularize.Services
                         await FillRegularizePopupAsync(page, span).ConfigureAwait(false);
                         await page.WaitForTimeoutAsync(5000).ConfigureAwait(false);
                         Emit(statusCallback, $"Filled {date:yyyy-MM-dd} (waiting 5s for review)", "info", true);
+                        await CheckCancellationAsync(page, cancellationToken).ConfigureAwait(false);
                         await SubmitPopupAsync(page).ConfigureAwait(false);
                         Emit(statusCallback, $"Submitted {date:yyyy-MM-dd}", "info", true);
                     }
@@ -558,7 +567,9 @@ namespace CeraRegularize.Services
                 {
                     foreach (var date in allowedDates)
                     {
+                        await CheckCancellationAsync(page, cancellationToken).ConfigureAwait(false);
                         await EnsureHomePageAsync(page).ConfigureAwait(false);
+                        await CheckCancellationAsync(page, cancellationToken).ConfigureAwait(false);
                         if (await DismissDisabledPopupAsync(page).ConfigureAwait(false))
                         {
                             Emit(statusCallback, "Closed leftover disabled popup before WFH flow", "warning", false);
@@ -566,6 +577,7 @@ namespace CeraRegularize.Services
 
                         Emit(statusCallback, "Opening Apply Leave screen", "info", false);
                         await GoToApplyLeaveAsync(page).ConfigureAwait(false);
+                        await CheckCancellationAsync(page, cancellationToken).ConfigureAwait(false);
                         Emit(statusCallback, "Apply Leave page loaded", "info", true);
 
                         var span = lengthMap.TryGetValue(date, out var length) ? length : DayLengthFull;
@@ -575,6 +587,7 @@ namespace CeraRegularize.Services
                             Emit(statusCallback, $"Skipping {date:yyyy-MM-dd}: unable to fill WFH form.", "warning", true);
                             continue;
                         }
+                        await CheckCancellationAsync(page, cancellationToken).ConfigureAwait(false);
                         var submitted = await SubmitApplyLeaveAsync(page).ConfigureAwait(false);
                         if (submitted)
                         {
@@ -1279,6 +1292,7 @@ namespace CeraRegularize.Services
             {
                 statusValue = DayLengthToStatus[DayLengthFull];
             }
+            AppLogger.LogDebug($"Regularize popup times: in={inTimeValue}, out={outTimeValue}", nameof(AttendanceAutomator));
 
             try
             {
@@ -1296,7 +1310,7 @@ namespace CeraRegularize.Services
             try
             {
                 var inTime = page.Locator("#MiddleContent_txtIn_Time_txtTime");
-                await inTime.FillAsync(inTimeValue).ConfigureAwait(false);
+                await TypeTimeFieldAsync(inTime, inTimeValue).ConfigureAwait(false);
             }
             catch
             {
@@ -1305,7 +1319,7 @@ namespace CeraRegularize.Services
             try
             {
                 var outTime = page.Locator("#MiddleContent_txtOut_Time_txtTime");
-                await outTime.FillAsync(outTimeValue).ConfigureAwait(false);
+                await TypeTimeFieldAsync(outTime, outTimeValue).ConfigureAwait(false);
             }
             catch
             {
@@ -1353,7 +1367,6 @@ namespace CeraRegularize.Services
             {
                 var fromField = page.Locator("#MiddleContent_calLvFrom_textBox");
                 await fromField.FillAsync(dateStr).ConfigureAwait(false);
-                await WaitForSubmissionProgressAsync(page).ConfigureAwait(false);
                 await fromField.PressAsync("Tab").ConfigureAwait(false);
                 await WaitForSubmissionProgressAsync(page).ConfigureAwait(false);
                 await WaitForPostbackAsync(page).ConfigureAwait(false);
@@ -1368,7 +1381,6 @@ namespace CeraRegularize.Services
             {
                 var toField = page.Locator("#MiddleContent_calLvTo_textBox");
                 await toField.FillAsync(dateStr).ConfigureAwait(false);
-                await WaitForSubmissionProgressAsync(page).ConfigureAwait(false);
                 await toField.PressAsync("Tab").ConfigureAwait(false);
                 await WaitForSubmissionProgressAsync(page).ConfigureAwait(false);
                 await WaitForPostbackAsync(page).ConfigureAwait(false);
@@ -1412,12 +1424,56 @@ namespace CeraRegularize.Services
             return true;
         }
 
+        private async Task CheckCancellationAsync(IPage page, CancellationToken cancellationToken)
+        {
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            AppLogger.LogInfo("Attendance submission cancellation requested", nameof(AttendanceAutomator));
+            try
+            {
+                await EnsureHomePageAsync(page).ConfigureAwait(false);
+            }
+            catch
+            {
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+
         private static async Task WaitForPostbackAsync(IPage page, int timeoutMs = 15000)
         {
             try
             {
                 await page.WaitForLoadStateAsync(LoadState.NetworkIdle, new PageWaitForLoadStateOptions { Timeout = timeoutMs }).ConfigureAwait(false);
                 await page.WaitForTimeoutAsync(200).ConfigureAwait(false);
+            }
+            catch
+            {
+            }
+        }
+
+        private static async Task TypeTimeFieldAsync(ILocator field, string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return;
+            }
+
+            var trimmed = value.Trim();
+            if (trimmed.Length == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                await field.ClickAsync(new LocatorClickOptions { Timeout = 2000 }).ConfigureAwait(false);
+                await field.PressAsync("Control+A").ConfigureAwait(false);
+                await field.PressAsync("Backspace").ConfigureAwait(false);
+                await field.PressSequentiallyAsync(trimmed, new LocatorPressSequentiallyOptions { Delay = 60 }).ConfigureAwait(false);
             }
             catch
             {
@@ -1487,6 +1543,11 @@ namespace CeraRegularize.Services
             try
             {
                 AppLogger.LogInfo("Submitting WFH Apply Leave", nameof(AttendanceAutomator));
+                if (!await ValidateWfhFormAsync(page).ConfigureAwait(false))
+                {
+                    AppLogger.LogWarning("WFH submit blocked: form validation failed", nameof(AttendanceAutomator));
+                    return false;
+                }
                 await EnsureWfhReasonBeforeSubmitAsync(page).ConfigureAwait(false);
                 await submitBtn.ClickAsync(new LocatorClickOptions { Timeout = 45000 }).ConfigureAwait(false);
                 try
@@ -1517,6 +1578,55 @@ namespace CeraRegularize.Services
             {
                 page.Dialog -= handler;
             }
+        }
+
+        private static async Task<bool> ValidateWfhFormAsync(IPage page)
+        {
+            string? fromValue = null;
+            string? toValue = null;
+            try
+            {
+                fromValue = (await page.Locator("#MiddleContent_calLvFrom_textBox").InputValueAsync().ConfigureAwait(false))?.Trim();
+                toValue = (await page.Locator("#MiddleContent_calLvTo_textBox").InputValueAsync().ConfigureAwait(false))?.Trim();
+            }
+            catch
+            {
+            }
+
+            if (string.IsNullOrWhiteSpace(fromValue) || string.IsNullOrWhiteSpace(toValue))
+            {
+                AppLogger.LogWarning("WFH validation failed: from/to date missing", nameof(AttendanceAutomator));
+                return false;
+            }
+
+            if (!string.Equals(fromValue, toValue, StringComparison.Ordinal))
+            {
+                AppLogger.LogWarning($"WFH validation failed: from/to mismatch ({fromValue} != {toValue})", nameof(AttendanceAutomator));
+                return false;
+            }
+
+            string? leaveValue = null;
+            string? leaveText = null;
+            try
+            {
+                var leaveSelect = page.Locator("#MiddleContent_ddlLvType");
+                leaveValue = (await leaveSelect.InputValueAsync().ConfigureAwait(false))?.Trim();
+                leaveText = (await leaveSelect.Locator("option:checked").InnerTextAsync().ConfigureAwait(false))?.Trim();
+            }
+            catch
+            {
+            }
+
+            if (!string.Equals(leaveValue, "G", StringComparison.OrdinalIgnoreCase)
+                && (string.IsNullOrWhiteSpace(leaveText)
+                    || !leaveText.Contains("Work from home", StringComparison.OrdinalIgnoreCase)))
+            {
+                var label = string.IsNullOrWhiteSpace(leaveText) ? leaveValue ?? "unknown" : leaveText;
+                AppLogger.LogWarning($"WFH validation failed: leave type is '{label}'", nameof(AttendanceAutomator));
+                return false;
+            }
+
+            return true;
         }
 
         private async Task SubmitPopupAsync(IPage page)

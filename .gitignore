@@ -2,3 +2,4 @@ bin/
 obj/
 PythonApp/
 .vs/
+ReleasePackages/

@@ -65,7 +65,7 @@ namespace CeraRegularize.Controls
         {
             if (d is LoadingOverlay overlay)
             {
-                overlay.MessageText.Text = e.NewValue as string ?? "Loading...";
+                overlay.SetMessageText(e.NewValue as string);
             }
         }
 
@@ -73,7 +73,7 @@ namespace CeraRegularize.Controls
         {
             Root.Visibility = IsActive ? Visibility.Visible : Visibility.Collapsed;
             Root.IsHitTestVisible = IsActive;
-            MessageText.Text = string.IsNullOrWhiteSpace(Message) ? "Loading..." : Message;
+            SetMessageText(Message);
             if (IsActive)
             {
                 StartSpinner();
@@ -93,6 +93,19 @@ namespace CeraRegularize.Controls
         private void StopSpinner()
         {
             _spinStoryboard?.Stop(this);
+        }
+
+        private void SetMessageText(string? message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                MessageText.Text = string.Empty;
+                MessageText.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            MessageText.Text = message;
+            MessageText.Visibility = Visibility.Visible;
         }
     }
 }

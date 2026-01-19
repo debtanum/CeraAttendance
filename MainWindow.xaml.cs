@@ -6,13 +6,19 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
+using DrawingIcon = System.Drawing.Icon;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Forms = System.Windows.Forms;
+using Velopack;
+using Velopack.Sources;
 
 namespace CeraRegularize
 {
@@ -34,16 +40,25 @@ namespace CeraRegularize
         private readonly Pages.SettingsPage _settingsPage;
         private readonly AttendanceAutomator _automator;
         private Forms.NotifyIcon? _trayIcon;
+        private DrawingIcon? _trayAppIcon;
         private bool _exitRequested;
         private DispatcherTimer? _sessionTimer;
         private bool _sessionCheckRunning;
         private bool _initialsFetchRunning;
+        private const string AppIconUri = "pack://application:,,,/Artifacts/CeraRegularize_Icon.ico";
         private DispatcherTimer? _historyTimer;
         private bool _historyRefreshRunning;
         private bool _loginVerified;
         private bool _profileFetchRunning;
         private ProfileSummary? _profileSummary;
         private bool _playwrightReady;
+        private DispatcherTimer? _autoUpdateTimer;
+        private bool _updateInProgress;
+        private bool _submissionInProgress;
+        private bool _submissionCancelling;
+        private CancellationTokenSource? _submissionCts;
+        private const string UpdateRepoUrl = "https://github.com/debtanum/CeraRegularize_Update";
+        private const int AutoUpdateIntervalMinutes = 30;
 
         public MainWindow()
         {
@@ -61,8 +76,10 @@ namespace CeraRegularize
             var settings = SettingsStore.Load();
             ThemeManager.ApplyTheme(settings.ThemeMode);
             _homePage.SetSelectionMode(settings.CalendarSelectionMode);
+            _homePage.SetCeragonView(settings.CalendarViewEnabled);
             _homePage.ApplyAttendanceOverlays(AttendanceHistoryStore.LoadOverlays());
             ConfigureHistoryRefresh(settings.AutoRefreshEnabled, settings.AutoRefreshIntervalMin);
+            ConfigureAutoUpdate(settings.AutoUpdateEnabled);
             // Default page is the login page until credentials are verified
             ContentArea.Content = _loginPage;
             // Wire up top bar events
@@ -80,6 +97,9 @@ namespace CeraRegularize
             _profilePage.LogoutRequested += ProfilePage_LogoutRequested;
             _settingsPage.ThemeChanged += (_, args) => ThemeManager.ApplyTheme(args.ThemeMode);
             _settingsPage.SelectionModeChanged += (_, args) => _homePage.SetSelectionMode(args.SelectionMode);
+            _settingsPage.CalendarViewChanged += (_, args) => _homePage.SetCeragonView(args.Enabled);
+            _settingsPage.AutoUpdateChanged += SettingsPage_AutoUpdateChanged;
+            _settingsPage.ManualUpdateRequested += SettingsPage_ManualUpdateRequested;
             _settingsPage.AutoRefreshChanged += SettingsPage_AutoRefreshChanged;
             _homePage.SubmitRequested += HomePage_SubmitRequested;
             _homePage.CancelRequested += HomePage_CancelRequested;
@@ -101,6 +121,8 @@ namespace CeraRegularize
             {
                 return;
             }
+
+            await RunUpdateCheckAsync("startup", showOverlayOnUpdate: true).ConfigureAwait(true);
 
             StartSessionTimer();
             await AttemptAutoLoginAsync().ConfigureAwait(true);
@@ -134,9 +156,10 @@ namespace CeraRegularize
 
         private void InitializeTrayIcon()
         {
+            _trayAppIcon ??= LoadTrayIcon();
             _trayIcon = new Forms.NotifyIcon
             {
-                Icon = SystemIcons.Application,
+                Icon = _trayAppIcon ?? SystemIcons.Application,
                 Text = "CeraRegularize",
                 Visible = true,
             };
@@ -195,6 +218,36 @@ namespace CeraRegularize
             Close();
         }
 
+        private static DrawingIcon? LoadTrayIcon()
+        {
+            try
+            {
+                var uri = new Uri(AppIconUri, UriKind.Absolute);
+                var info = System.Windows.Application.GetResourceStream(uri);
+                if (info?.Stream == null)
+                {
+                    return null;
+                }
+
+                using var stream = info.Stream;
+                using var bitmap = new Bitmap(stream);
+                var hIcon = bitmap.GetHicon();
+                var icon = DrawingIcon.FromHandle(hIcon);
+                var cloned = (DrawingIcon)icon.Clone();
+                DestroyIcon(hIcon);
+                icon.Dispose();
+                return cloned;
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogWarning($"Tray icon load failed: {ex.Message}", nameof(MainWindow));
+                return null;
+            }
+        }
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool DestroyIcon(IntPtr hIcon);
+
         private void PositionBottomRight()
         {
             var workArea = SystemParameters.WorkArea;
@@ -222,7 +275,7 @@ namespace CeraRegularize
             {
                 AppLogger.LogError("Playwright setup failed", ex, nameof(MainWindow));
                 System.Windows.MessageBox.Show(
-                    $"Unable to setup browser automation: {ex.Message}",
+                    "Unable to setup browser automation. See logs for details.",
                     "CeraRegularize",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
@@ -379,8 +432,15 @@ namespace CeraRegularize
 
         private void HomePage_CancelRequested(object? sender, EventArgs e)
         {
-            AppLogger.LogInfo("Selections cleared", nameof(MainWindow));
+            if (_submissionInProgress)
+            {
+                RequestSubmissionCancel();
+                return;
+            }
+
+            _homePage.ClearSelections();
             _homePage.RefreshActionButtons();
+            AppLogger.LogInfo("Selections cleared", nameof(MainWindow));
         }
 
         private async void TopBarControl_SyncClicked(object? sender, EventArgs e)
@@ -422,33 +482,126 @@ namespace CeraRegularize
                 return;
             }
 
-            _homePage.SetActionsEnabled(false);
+            _homePage.SetSubmitEnabled(false);
+            _homePage.SetCancelEnabled(true);
+            _homePage.SetSubmissionOverlay(true, string.Empty);
+            _submissionInProgress = true;
+            _submissionCancelling = false;
+            _submissionCts?.Dispose();
+            _submissionCts = new CancellationTokenSource();
+            void HandleSubmissionStatus(string message, string level, bool advance)
+            {
+                if (_submissionCancelling)
+                {
+                    return;
+                }
+
+                var status = FormatSubmissionOverlayMessage(message);
+                if (status == null)
+                {
+                    return;
+                }
+
+                Dispatcher.BeginInvoke(() => _homePage.SetSubmissionOverlay(true, status));
+            }
             try
             {
                 AppLogger.LogInfo($"Submitting attendance: {selections.Count} date(s)", nameof(MainWindow));
-                await _automator.RegularizeDatesAsync(selections, statusCallback: null).ConfigureAwait(true);
-                _homePage.ClearSelections();
+                await _automator.RegularizeDatesAsync(selections, statusCallback: HandleSubmissionStatus, cancellationToken: _submissionCts.Token).ConfigureAwait(true);
                 var snapshot = await RefreshAttendanceHistoryAsync("submit", true).ConfigureAwait(true);
                 NotifySubmissionResult(selections, snapshot);
+            }
+            catch (OperationCanceledException)
+            {
+                AppLogger.LogInfo("Submission cancelled", nameof(MainWindow));
+                var snapshot = await RefreshAttendanceHistoryAsync("submit-cancelled", true).ConfigureAwait(true);
+                if (snapshot == null)
+                {
+                    ShowUserNotification(
+                        "Attendance status unknown",
+                        "Unable to refresh attendance history after cancellation.",
+                        Forms.ToolTipIcon.Warning);
+                }
+                else
+                {
+                    NotifyCancellationResult(selections, snapshot);
+                }
             }
             catch (Exception ex)
             {
                 AppLogger.LogError("Submit failed", ex, nameof(MainWindow));
                 System.Windows.MessageBox.Show(
-                    $"Submit failed: {ex.Message}",
+                    "Submit failed. See logs for details.",
                     "CeraRegularize",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
+                var snapshot = await RefreshAttendanceHistoryAsync("submit-failed", true).ConfigureAwait(true);
+                if (snapshot == null)
+                {
+                    ShowUserNotification(
+                        "Attendance status unknown",
+                        "Unable to refresh attendance history after failure.",
+                        Forms.ToolTipIcon.Warning);
+                }
+                else
+                {
+                    NotifySubmissionResult(selections, snapshot);
+                }
             }
             finally
             {
+                _submissionInProgress = false;
+                _submissionCancelling = false;
+                _submissionCts?.Dispose();
+                _submissionCts = null;
+                _homePage.SetSubmissionOverlay(false);
+                _homePage.ClearSelections();
                 _homePage.RefreshActionButtons();
             }
+        }
+
+        private static string? FormatSubmissionOverlayMessage(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return null;
+            }
+
+            var match = Regex.Match(message, @"\b\d{4}-\d{2}-\d{2}\b");
+            if (!match.Success)
+            {
+                return null;
+            }
+
+            return $"Submitting attendance for {match.Value}...";
+        }
+
+        private void RequestSubmissionCancel()
+        {
+            if (!_submissionInProgress || _submissionCts == null || _submissionCts.IsCancellationRequested)
+            {
+                return;
+            }
+
+            _submissionCancelling = true;
+            _homePage.SetSubmissionOverlay(true, "Cancelling...");
+            _submissionCts.Cancel();
+            AppLogger.LogInfo("Submission cancel requested", nameof(MainWindow));
         }
 
         private void SettingsPage_AutoRefreshChanged(object? sender, Pages.AutoRefreshChangedEventArgs e)
         {
             ConfigureHistoryRefresh(e.Enabled, e.IntervalMinutes);
+        }
+
+        private void SettingsPage_AutoUpdateChanged(object? sender, Pages.AutoUpdateChangedEventArgs e)
+        {
+            ConfigureAutoUpdate(e.Enabled);
+        }
+
+        private async void SettingsPage_ManualUpdateRequested(object? sender, EventArgs e)
+        {
+            await RunUpdateCheckAsync("manual", showOverlayOnUpdate: true).ConfigureAwait(true);
         }
 
         private void ConfigureHistoryRefresh(bool enabled, int intervalMinutes)
@@ -475,6 +628,111 @@ namespace CeraRegularize
             {
                 _historyTimer.Start();
             }
+        }
+
+        private void ConfigureAutoUpdate(bool enabled)
+        {
+            if (_autoUpdateTimer == null)
+            {
+                _autoUpdateTimer = new DispatcherTimer();
+                _autoUpdateTimer.Tick += AutoUpdateTimer_Tick;
+            }
+
+            if (!enabled)
+            {
+                _autoUpdateTimer.Stop();
+                return;
+            }
+
+            _autoUpdateTimer.Interval = TimeSpan.FromMinutes(AutoUpdateIntervalMinutes);
+            if (!_autoUpdateTimer.IsEnabled)
+            {
+                _autoUpdateTimer.Start();
+            }
+        }
+
+        private async void AutoUpdateTimer_Tick(object? sender, EventArgs e)
+        {
+            await RunUpdateCheckAsync("timer", showOverlayOnUpdate: true).ConfigureAwait(true);
+        }
+
+        private async Task RunUpdateCheckAsync(string reason, bool showOverlayOnUpdate)
+        {
+            if (_updateInProgress)
+            {
+                return;
+            }
+
+            _updateInProgress = true;
+            var overlayShown = false;
+            try
+            {
+                var repoUrl = ResolveUpdateRepoUrl();
+                if (string.IsNullOrWhiteSpace(repoUrl))
+                {
+                    AppLogger.LogWarning("Update check skipped: update repo URL not configured", nameof(MainWindow));
+                    return;
+                }
+
+                var manager = CreateUpdateManager(repoUrl);
+                if (!manager.IsInstalled)
+                {
+                    AppLogger.LogDebug("Update check skipped: app is not installed", nameof(MainWindow));
+                    return;
+                }
+
+                var update = await manager.CheckForUpdatesAsync().ConfigureAwait(true);
+                if (update == null)
+                {
+                    AppLogger.LogInfo($"No updates available ({reason})", nameof(MainWindow));
+                    return;
+                }
+
+                if (showOverlayOnUpdate)
+                {
+                    if (!LoadingOverlay.IsActive)
+                    {
+                        ShowOverlay("Updating Application...");
+                        overlayShown = true;
+                    }
+                    else
+                    {
+                        LoadingOverlay.Message = "Updating Application...";
+                    }
+                }
+
+                AppLogger.LogInfo($"Update found ({reason}); downloading", nameof(MainWindow));
+                await manager.DownloadUpdatesAsync(update).ConfigureAwait(true);
+                AppLogger.LogInfo($"Update downloaded ({reason}); applying", nameof(MainWindow));
+                manager.ApplyUpdatesAndRestart(update.TargetFullRelease, Array.Empty<string>());
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogError($"Update check failed ({reason})", ex, nameof(MainWindow));
+            }
+            finally
+            {
+                if (overlayShown)
+                {
+                    HideOverlay();
+                }
+
+                _updateInProgress = false;
+            }
+        }
+
+        private static UpdateManager CreateUpdateManager(string repoUrl)
+        {
+            var token = Environment.GetEnvironmentVariable("CERA_UPDATE_GH_TOKEN") ?? string.Empty;
+            var source = new GithubSource(repoUrl, token, false, null);
+            return new UpdateManager(source);
+        }
+
+        private static string ResolveUpdateRepoUrl()
+        {
+            var envRepo = Environment.GetEnvironmentVariable("CERA_UPDATE_REPO_URL");
+            var resolved = string.IsNullOrWhiteSpace(envRepo) ? UpdateRepoUrl : envRepo.Trim();
+            return resolved.Contains("OWNER/REPO", StringComparison.OrdinalIgnoreCase) ? string.Empty : resolved;
         }
 
         private async void HistoryTimer_Tick(object? sender, EventArgs e)
@@ -560,6 +818,42 @@ namespace CeraRegularize
                 ShowUserNotification(
                     "Attendance not applied",
                     $"Failed: {FormatNotificationList(failed)}",
+                    Forms.ToolTipIcon.Warning);
+            }
+        }
+
+        private void NotifyCancellationResult(
+            IReadOnlyList<(DateTime date, string mode, string span)> selections,
+            AttendanceHistorySnapshot snapshot)
+        {
+            var applied = new List<string>();
+            var cancelled = new List<string>();
+            foreach (var selection in selections)
+            {
+                var label = FormatSelectionLabel(selection);
+                if (IsSelectionApplied(snapshot, selection))
+                {
+                    applied.Add(label);
+                }
+                else
+                {
+                    cancelled.Add(label);
+                }
+            }
+
+            if (applied.Count > 0)
+            {
+                ShowUserNotification(
+                    "Attendance applied",
+                    $"Applied: {FormatNotificationList(applied)}",
+                    Forms.ToolTipIcon.Info);
+            }
+
+            if (cancelled.Count > 0)
+            {
+                ShowUserNotification(
+                    "Attendance cancelled",
+                    $"Cancelled: {FormatNotificationList(cancelled)}",
                     Forms.ToolTipIcon.Warning);
             }
         }
@@ -1089,11 +1383,22 @@ namespace CeraRegularize
                 _historyTimer.Tick -= HistoryTimer_Tick;
                 _historyTimer = null;
             }
+            if (_autoUpdateTimer != null)
+            {
+                _autoUpdateTimer.Stop();
+                _autoUpdateTimer.Tick -= AutoUpdateTimer_Tick;
+                _autoUpdateTimer = null;
+            }
             if (_trayIcon != null)
             {
                 _trayIcon.Visible = false;
                 _trayIcon.Dispose();
                 _trayIcon = null;
+            }
+            if (_trayAppIcon != null)
+            {
+                _trayAppIcon.Dispose();
+                _trayAppIcon = null;
             }
             await _automator.DisposeAsync();
             base.OnClosed(e);

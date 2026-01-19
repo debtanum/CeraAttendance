@@ -13,6 +13,9 @@ namespace CeraRegularize.Pages
     {
         public event EventHandler<ThemeChangedEventArgs>? ThemeChanged;
         public event EventHandler<SelectionModeChangedEventArgs>? SelectionModeChanged;
+        public event EventHandler<CalendarViewChangedEventArgs>? CalendarViewChanged;
+        public event EventHandler<AutoUpdateChangedEventArgs>? AutoUpdateChanged;
+        public event EventHandler? ManualUpdateRequested;
         public event EventHandler<AutoRefreshChangedEventArgs>? AutoRefreshChanged;
 
         private SettingsState _state;
@@ -36,6 +39,7 @@ namespace CeraRegularize.Pages
             AttachAccordionLogging(CalendarExpander, "Calendar Selection Style");
             AttachAccordionLogging(SyncExpander, "Attendance Sync");
             AttachAccordionLogging(DeveloperExpander, "Developer Tools");
+            AttachAccordionLogging(GeneralExpander, "General");
         }
 
         private static void AttachAccordionLogging(Expander expander, string label)
@@ -51,6 +55,10 @@ namespace CeraRegularize.Pages
             ThemeSystemRadio.Checked += (_, _) => ToggleSaveButton();
             ThemeLightRadio.Checked += (_, _) => ToggleSaveButton();
             ThemeDarkRadio.Checked += (_, _) => ToggleSaveButton();
+
+            AutoUpdateToggle.Checked += (_, _) => ToggleSaveButton();
+            AutoUpdateToggle.Unchecked += (_, _) => ToggleSaveButton();
+            ManualUpdateButton.Click += (_, _) => ManualUpdateRequested?.Invoke(this, EventArgs.Empty);
 
             LogEnableCheckBox.Checked += (_, _) => OnLogEnableToggled();
             LogEnableCheckBox.Unchecked += (_, _) => OnLogEnableToggled();
@@ -68,17 +76,19 @@ namespace CeraRegularize.Pages
 
             SelectionPopupRadio.Checked += (_, _) => ToggleSaveButton();
             SelectionLoopRadio.Checked += (_, _) => ToggleSaveButton();
+            CalendarViewToggle.Checked += (_, _) => ToggleSaveButton();
+            CalendarViewToggle.Unchecked += (_, _) => ToggleSaveButton();
 
-            AutoRefreshCheckBox.Checked += (_, _) => OnAutoRefreshToggled();
-            AutoRefreshCheckBox.Unchecked += (_, _) => OnAutoRefreshToggled();
+            AutoRefreshToggle.Checked += (_, _) => OnAutoRefreshToggled();
+            AutoRefreshToggle.Unchecked += (_, _) => OnAutoRefreshToggled();
 
             AutoRefreshTextBox.TextChanged += (_, _) => OnIntervalChanged();
             AutoRefreshTextBox.PreviewTextInput += AutoRefreshTextBox_PreviewTextInput;
             System.Windows.DataObject.AddPastingHandler(AutoRefreshTextBox, AutoRefreshTextBox_Paste);
             AutoRefreshTextBox.LostFocus += (_, _) => ClampIntervalText();
 
-            HeadlessCheckBox.Checked += (_, _) => ToggleSaveButton();
-            HeadlessCheckBox.Unchecked += (_, _) => ToggleSaveButton();
+            HeadlessToggle.Checked += (_, _) => ToggleSaveButton();
+            HeadlessToggle.Unchecked += (_, _) => ToggleSaveButton();
 
             SaveButton.Click += (_, _) => OnSave();
             ResetButton.Click += (_, _) => OnReset();
@@ -102,6 +112,7 @@ namespace CeraRegularize.Pages
                     ThemeSystemRadio.IsChecked = true;
                 }
 
+                AutoUpdateToggle.IsChecked = _state.AutoUpdateEnabled;
                 LogEnableCheckBox.IsChecked = _state.LogFileEnabled;
                 LogDebugCheckBox.IsChecked = GetLogLevel(_state, "debug");
                 LogInfoCheckBox.IsChecked = GetLogLevel(_state, "info");
@@ -118,11 +129,12 @@ namespace CeraRegularize.Pages
                 {
                     SelectionPopupRadio.IsChecked = true;
                 }
+                CalendarViewToggle.IsChecked = _state.CalendarViewEnabled;
 
-                AutoRefreshCheckBox.IsChecked = _state.AutoRefreshEnabled;
+                AutoRefreshToggle.IsChecked = _state.AutoRefreshEnabled;
                 AutoRefreshTextBox.Text = _state.AutoRefreshIntervalMin.ToString(CultureInfo.InvariantCulture);
                 SetAutoRefreshEnabledState();
-                HeadlessCheckBox.IsChecked = _state.HeadlessEnabled;
+                HeadlessToggle.IsChecked = _state.HeadlessEnabled;
             }
             finally
             {
@@ -147,6 +159,7 @@ namespace CeraRegularize.Pages
             return new SettingsState
             {
                 ThemeMode = mode,
+                AutoUpdateEnabled = AutoUpdateToggle.IsChecked == true,
                 LogFileEnabled = LogEnableCheckBox.IsChecked == true,
                 LogLevels = new System.Collections.Generic.Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase)
                 {
@@ -157,9 +170,10 @@ namespace CeraRegularize.Pages
                     ["critical"] = LogCriticalCheckBox.IsChecked == true,
                 },
                 CalendarSelectionMode = selectionMode,
-                AutoRefreshEnabled = AutoRefreshCheckBox.IsChecked == true,
+                CalendarViewEnabled = CalendarViewToggle.IsChecked == true,
+                AutoRefreshEnabled = AutoRefreshToggle.IsChecked == true,
                 AutoRefreshIntervalMin = GetIntervalValue(),
-                HeadlessEnabled = HeadlessCheckBox.IsChecked == true,
+                HeadlessEnabled = HeadlessToggle.IsChecked == true,
             };
         }
 
@@ -172,6 +186,8 @@ namespace CeraRegularize.Pages
             AppLogger.UpdateSettings(_state);
             ThemeChanged?.Invoke(this, new ThemeChangedEventArgs(_state.ThemeMode));
             SelectionModeChanged?.Invoke(this, new SelectionModeChangedEventArgs(_state.CalendarSelectionMode));
+            CalendarViewChanged?.Invoke(this, new CalendarViewChangedEventArgs(_state.CalendarViewEnabled));
+            AutoUpdateChanged?.Invoke(this, new AutoUpdateChangedEventArgs(_state.AutoUpdateEnabled));
             AutoRefreshChanged?.Invoke(this, new AutoRefreshChangedEventArgs(_state.AutoRefreshEnabled, _state.AutoRefreshIntervalMin));
 
             ToggleSaveButton();
@@ -214,7 +230,7 @@ namespace CeraRegularize.Pages
 
         private void SetAutoRefreshEnabledState()
         {
-            var enabled = AutoRefreshCheckBox.IsChecked == true;
+            var enabled = AutoRefreshToggle.IsChecked == true;
             AutoRefreshTextBox.IsEnabled = enabled;
             AutoRefreshLabel.IsEnabled = enabled;
         }
@@ -290,6 +306,11 @@ namespace CeraRegularize.Pages
                 && state.LogLevels.TryGetValue(key, out var value)
                 && value;
         }
+
+        private void AutoRefreshCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+
+        }
     }
 
     public sealed class ThemeChangedEventArgs : EventArgs
@@ -310,6 +331,26 @@ namespace CeraRegularize.Pages
         }
 
         public string SelectionMode { get; }
+    }
+
+    public sealed class CalendarViewChangedEventArgs : EventArgs
+    {
+        public CalendarViewChangedEventArgs(bool enabled)
+        {
+            Enabled = enabled;
+        }
+
+        public bool Enabled { get; }
+    }
+
+    public sealed class AutoUpdateChangedEventArgs : EventArgs
+    {
+        public AutoUpdateChangedEventArgs(bool enabled)
+        {
+            Enabled = enabled;
+        }
+
+        public bool Enabled { get; }
     }
 
     public sealed class AutoRefreshChangedEventArgs : EventArgs

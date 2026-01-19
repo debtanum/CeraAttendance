@@ -9,12 +9,17 @@
       Placeholder for the Apply Leave page. This page will eventually host
       controls to request time off. For now it shows a simple message.
     -->
-    <Grid>
-        <TextBlock Text="Apply Leave Page (Coming Soon)"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center"
-                   FontSize="16"
-                   FontWeight="SemiBold"
-                   Foreground="{DynamicResource MutedTextBrush}" />
+    <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+            <TextBlock Text="Apply Leave Page"
+                       HorizontalAlignment="Center"
+                       FontSize="16"
+                       FontWeight="SemiBold" />
+            <TextBlock Text="Coming Soon..."
+                       HorizontalAlignment="Center"
+                       FontSize="13"
+                       FontWeight="SemiBold"
+                       Margin="0,6,0,0" />
+        </StackPanel>
     </Grid>
 </UserControl>

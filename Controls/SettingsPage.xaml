@@ -13,92 +13,180 @@
         <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="12" Orientation="Vertical">
 
+                <Expander x:Name="GeneralExpander"
+                          Header="General Settings"
+                          Style="{StaticResource AccordionExpanderStyle}"
+                          FontWeight="Bold"
+                          FontSize="14">
+                    <StackPanel TextElement.FontSize="12">
+                        <TextBlock Text="Update"
+                                   FontWeight="Bold"
+                                   Margin="0,0,0,6" />
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Enable auto update"
+                                       VerticalAlignment="Center" />
+                            <ToggleButton x:Name="AutoUpdateToggle"
+                                          Grid.Column="1"
+                                          Style="{StaticResource PillToggleButtonStyle}"
+                                          IsChecked="False" />
+                        </Grid>
+                        <Button x:Name="ManualUpdateButton"
+                                Content="Manual Update"
+                                Style="{StaticResource PrimaryButtonStyle}"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                Margin="0,4,0,0" />
+                    </StackPanel>
+                </Expander>
+
                 <Expander x:Name="AppearanceExpander"
                           Header="Appearance Settings"
                           Style="{StaticResource AccordionExpanderStyle}"
-                          FontWeight="Bold">
-                    <StackPanel>
+                          FontWeight="Bold"
+                          FontSize="14">
+                    <StackPanel TextElement.FontSize="12">
+                        <TextBlock Text="Theme Style"
+                                   FontWeight="Bold"
+                                   Margin="0,0,0,6" />
                         <RadioButton x:Name="ThemeSystemRadio"
                                      Content="Use system theme"
-                                     GroupName="ThemeGroup" />
+                                     GroupName="ThemeGroup"
+                                     IsEnabled="False" FontWeight="Normal" />
                         <RadioButton x:Name="ThemeLightRadio"
                                      Content="Force light"
-                                     GroupName="ThemeGroup" />
+                                     GroupName="ThemeGroup"
+                                     IsChecked="True" FontWeight="Normal" />
+                        <!-- Theme options will be selected later. -->
                         <RadioButton x:Name="ThemeDarkRadio"
                                      Content="Force dark"
-                                     GroupName="ThemeGroup" />
+                                     GroupName="ThemeGroup"
+                                     IsEnabled="False" FontWeight="Normal" />
                     </StackPanel>
                 </Expander>
 
                 <Expander x:Name="CalendarExpander"
-                          Header="Calendar Selection Style"
+                          Header="Calendar Settings"
                           Style="{StaticResource AccordionExpanderStyle}"
-                          FontWeight="Bold">
-                    <StackPanel>
+                          FontWeight="Bold"
+                          FontSize="14">
+                    <StackPanel TextElement.FontSize="12">
+                        <TextBlock Text="Calendar View"
+                                   FontWeight="Bold"
+                                   Margin="0,0,0,6" />
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="CeraView"
+                                       VerticalAlignment="Center" FontWeight="Normal" />
+                            <ToggleButton x:Name="CalendarViewToggle"
+                                          Grid.Column="1"
+                                          Style="{StaticResource PillToggleButtonStyle}"
+                                          IsChecked="True" />
+                        </Grid>
+                        <TextBlock Text="Selection Style"
+                                   FontWeight="Bold"
+                                   Margin="0,0,0,6" />
                         <RadioButton x:Name="SelectionPopupRadio"
-                                     Content="Popup menu (tap to choose)"
-                                     GroupName="SelectionGroup" />
+                                     Content="Popup menu"
+                                     GroupName="SelectionGroup" FontWeight="Normal" />
                         <RadioButton x:Name="SelectionLoopRadio"
-                                     Content="Loop through on click (WFO -&gt; WFH -&gt; Clear)"
-                                     GroupName="SelectionGroup" />
+                                     Content="Loop through"
+                                     GroupName="SelectionGroup" FontWeight="Normal" />
                     </StackPanel>
                 </Expander>
 
                 <Expander x:Name="SyncExpander"
-                          Header="Attendance Sync"
+                          Header="Attendance Settings"
                           Style="{StaticResource AccordionExpanderStyle}"
-                          FontWeight="Bold">
-                    <StackPanel>
-                        <CheckBox x:Name="AutoRefreshCheckBox"
-                                  Content="Enable auto-refresh of attendance history"
-                                  Margin="0,0,0,6" />
-                        <StackPanel x:Name="AutoRefreshRow"
-                                    Orientation="Horizontal"
-                                    Margin="0,0,0,0">
+                          FontWeight="Bold"
+                          FontSize="14">
+                    <StackPanel TextElement.FontSize="12">
+                        <TextBlock Text="Data Sync"
+                                   FontWeight="Bold"
+                                   Margin="0,0,0,6" />
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Enable auto-sync"
+                                       VerticalAlignment="Center" FontWeight="Normal" />
+                            <ToggleButton x:Name="AutoRefreshToggle"
+                                          Grid.Column="1"
+                                          Style="{StaticResource PillToggleButtonStyle}"
+                                          IsChecked="False" />
+                        </Grid>
+                        <Grid x:Name="AutoRefreshRow"
+                              Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="60*" />
+                                <ColumnDefinition Width="173*"/>
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
                             <TextBlock x:Name="AutoRefreshLabel"
-                                       Text="Auto-refresh interval (minutes)"
-                                       VerticalAlignment="Center" />
-                            <TextBox x:Name="AutoRefreshTextBox"
-                                     Width="60"
-                                     Margin="8,0,0,0"
-                                     VerticalContentAlignment="Center" />
-                            <TextBlock Text="min"
-                                       Margin="6,0,0,0"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
+                                       Text="Auto-sync interval"
+                                       VerticalAlignment="Center" FontWeight="Normal" Grid.ColumnSpan="2" />
+                            <StackPanel Grid.Column="2"
+                                        Orientation="Horizontal"
+                                        HorizontalAlignment="Left"
+                                        Margin="8,0,0,0">
+                                <TextBox x:Name="AutoRefreshTextBox"
+                                         Width="60"
+                                         VerticalContentAlignment="Center" />
+                                <TextBlock Text="min"
+                                           Margin="6,0,0,0"
+                                           VerticalAlignment="Center" FontWeight="Normal" />
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
                 </Expander>
 
                 <Expander x:Name="DeveloperExpander"
-                          Header="Developer Tools"
+                          Header="Dev Settings"
                           Style="{StaticResource AccordionExpanderStyle}"
-                          FontWeight="Bold">
-                    <StackPanel>
+                          FontWeight="Bold"
+                          FontSize="14">
+                    <StackPanel TextElement.FontSize="12">
                         <TextBlock Text="Logging"
-                                   FontWeight="SemiBold"
-                                   FontSize="12"
+                                   FontWeight="Bold"
                                    Margin="0,0,0,6" />
                         <CheckBox x:Name="LogEnableCheckBox"
-                                  Content="Enable log file (app.log, max 10 MB)"
-                                  Margin="0,0,0,6" />
+                                  Content="Enable log file"
+                                  Margin="0,0,0,6" FontWeight="Normal" />
                         <GroupBox x:Name="LogLevelsGroupBox"
-                                  Header="Include levels in log file"
-                                  Margin="0,0,0,12">
+                                  Header="Debug levels in log file"
+                                  Margin="0,0,0,12"
+                                  FontSize="12" FontWeight="Bold">
                             <StackPanel Margin="10">
-                                <CheckBox x:Name="LogDebugCheckBox" Content="Debug" />
-                                <CheckBox x:Name="LogInfoCheckBox" Content="Info" />
-                                <CheckBox x:Name="LogWarningCheckBox" Content="Warning" />
-                                <CheckBox x:Name="LogErrorCheckBox" Content="Error" />
-                                <CheckBox x:Name="LogCriticalCheckBox" Content="Critical" />
+                                <CheckBox x:Name="LogDebugCheckBox" Content="Debug" FontWeight="Normal" />
+                                <CheckBox x:Name="LogInfoCheckBox" Content="Info" FontWeight="Normal" />
+                                <CheckBox x:Name="LogWarningCheckBox" Content="Warning" FontWeight="Normal" />
+                                <CheckBox x:Name="LogErrorCheckBox" Content="Error" FontWeight="Normal" />
+                                <CheckBox x:Name="LogCriticalCheckBox" Content="Critical" FontWeight="Normal" />
                             </StackPanel>
                         </GroupBox>
 
                         <TextBlock Text="Automation"
-                                   FontWeight="SemiBold"
-                                   FontSize="12"
+                                   FontWeight="Bold"
                                    Margin="0,0,0,6" />
-                        <CheckBox x:Name="HeadlessCheckBox"
-                                  Content="Enable headless browser (no UI)" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Enable headless mode"
+                                       VerticalAlignment="Center" FontWeight="Normal" />
+                            <ToggleButton x:Name="HeadlessToggle"
+                                          Grid.Column="1"
+                                          Style="{StaticResource PillToggleButtonStyle}"
+                                          IsChecked="False" />
+                        </Grid>
                     </StackPanel>
                 </Expander>
             </StackPanel>

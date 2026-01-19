@@ -18,18 +18,15 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <!-- Bubble calendar occupies most of the page -->
-        <local:BubbleCalendarControl x:Name="Calendar" Grid.Row="0" Loaded="Calendar_Loaded" />
+        <Grid Grid.Row="0">
+            <local:BubbleCalendarControl x:Name="Calendar" Loaded="Calendar_Loaded" />
+            <local:LoadingOverlay x:Name="SubmissionOverlay"
+                                  Panel.ZIndex="5"
+                                  CornerRadius="12" />
+        </Grid>
         <!-- Action buttons row -->
         <Grid Grid.Row="1" Margin="8">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <ToggleButton x:Name="ViewToggle"
-                          Style="{StaticResource PillToggleButtonStyle}"
-                          VerticalAlignment="Center" />
             <StackPanel Orientation="Horizontal"
-                        Grid.Column="1"
                         HorizontalAlignment="Right">
                 <Button x:Name="CancelButton"
                         Content="Cancel"

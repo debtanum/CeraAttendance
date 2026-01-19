@@ -11,7 +11,8 @@
         Height="500"
         WindowStyle="None"
         AllowsTransparency="True"
-        Background="Transparent">
+        Background="Transparent"
+        Icon="pack://application:,,,/Artifacts/CeraRegularize_Icon.ico">
     <!--
       The main window hosts two panels: a top panel containing the custom
       TopBar and a lower panel containing a ContentControl for pages. This

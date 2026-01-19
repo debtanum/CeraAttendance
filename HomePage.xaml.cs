@@ -16,16 +16,12 @@ namespace CeraRegularize.Pages
         {
             InitializeComponent();
             Calendar.SelectionChanged += (_, _) => UpdateActionButtons();
-            ViewToggle.Checked += (_, _) => SetCeragonView(true);
-            ViewToggle.Unchecked += (_, _) => SetCeragonView(false);
-            ViewToggle.IsChecked = true;
             SetCeragonView(true);
             UpdateActionButtons();
         }
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
-            ClearSelections();
             CancelRequested?.Invoke(this, EventArgs.Empty);
             AppLogger.LogDebug("Cancel clicked", nameof(HomePage));
         }
@@ -55,6 +51,22 @@ namespace CeraRegularize.Pages
         {
             SubmitButton.IsEnabled = enabled;
             CancelButton.IsEnabled = enabled;
+        }
+
+        public void SetSubmitEnabled(bool enabled)
+        {
+            SubmitButton.IsEnabled = enabled;
+        }
+
+        public void SetCancelEnabled(bool enabled)
+        {
+            CancelButton.IsEnabled = enabled;
+        }
+
+        public void SetSubmissionOverlay(bool active, string? message = null)
+        {
+            SubmissionOverlay.Message = message ?? string.Empty;
+            SubmissionOverlay.IsActive = active;
         }
 
         public void ClearSelections()
@@ -91,11 +103,10 @@ namespace CeraRegularize.Pages
 
         }
 
-        private void SetCeragonView(bool enabled)
+        public void SetCeragonView(bool enabled)
         {
             _ceragonView = enabled;
             Calendar.SetCeragonView(enabled);
-            ViewToggle.ToolTip = enabled ? "Switch to normal view" : "Switch to Ceragon view";
         }
     }
 }

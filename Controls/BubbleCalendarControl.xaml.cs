@@ -261,7 +261,7 @@ namespace CeraRegularize.Controls
 
             WfoCountText.Text = $"WFO: {FormatCount(wfo)}";
             WfhCountText.Text = $"WFH: {FormatCount(wfh)}";
-            OtherCountText.Text = $"Others: {FormatCount(other)}";
+            OtherCountText.Text = $"Leaves: {FormatCount(other)}";
             HolidayCountText.Text = $"Holiday: {FormatCount(holiday)}";
         }
 
