@@ -27,8 +27,8 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Enable auto update"
-                                       VerticalAlignment="Center" FontWeight="Normal" />
+                            <TextBlock
+                                       VerticalAlignment="Center" FontWeight="Normal" ><Run Language="en-in" Text="Auto update"/></TextBlock>
                             <ToggleButton x:Name="AutoUpdateToggle"
                                           Grid.Column="1"
                                           Style="{StaticResource PillToggleButtonStyle}"

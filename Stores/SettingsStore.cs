@@ -8,11 +8,11 @@ namespace CeraRegularize.Stores
 {
     public sealed class SettingsState
     {
-        public string ThemeMode { get; init; } = "system";
+        public string ThemeMode { get; init; } = "light";
         public bool AutoUpdateEnabled { get; init; }
         public bool LogFileEnabled { get; init; }
         public Dictionary<string, bool> LogLevels { get; init; } = new(StringComparer.OrdinalIgnoreCase);
-        public string CalendarSelectionMode { get; init; } = "popup";
+        public string CalendarSelectionMode { get; init; } = "loop";
         public bool CalendarViewEnabled { get; init; } = true;
         public bool AutoRefreshEnabled { get; init; }
         public int AutoRefreshIntervalMin { get; init; } = 10;
@@ -87,10 +87,10 @@ namespace CeraRegularize.Stores
         {
             var defaults = new SettingsState
             {
-                ThemeMode = "system",
+                ThemeMode = "light",
                 AutoUpdateEnabled = false,
-                LogFileEnabled = false,
-                CalendarSelectionMode = "popup",
+                LogFileEnabled = true,
+                CalendarSelectionMode = "loop",
                 CalendarViewEnabled = true,
                 AutoRefreshEnabled = false,
                 AutoRefreshIntervalMin = 10,
@@ -99,7 +99,7 @@ namespace CeraRegularize.Stores
 
             foreach (var key in LogLevelKeys)
             {
-                defaults.LogLevels[key] = key != "debug";
+                defaults.LogLevels[key] = true;
             }
 
             return defaults;

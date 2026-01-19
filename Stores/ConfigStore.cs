@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 namespace CeraRegularize.Stores
@@ -64,6 +66,8 @@ namespace CeraRegularize.Stores
     public static class ConfigStore
     {
         private const string StoreFileName = "config_store.json";
+        private const string ProtectedPrefix = "dpapi:";
+        private static readonly byte[] ProtectedEntropy = Encoding.UTF8.GetBytes("CeraRegularize|ConfigStore|v1");
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
             WriteIndented = true,
@@ -126,10 +130,12 @@ namespace CeraRegularize.Stores
         public static ConfigState Save(ConfigState data)
         {
             var snapshot = Normalize(data);
+            var persisted = snapshot.Copy();
+            persisted.Password = ProtectPassword(snapshot.Password);
             var path = AppPaths.DataFile(StoreFileName);
             try
             {
-                var json = JsonSerializer.Serialize(snapshot, JsonOptions);
+                var json = JsonSerializer.Serialize(persisted, JsonOptions);
                 File.WriteAllText(path, json);
             }
             catch
@@ -170,7 +176,7 @@ namespace CeraRegularize.Stores
             return new ConfigState
             {
                 Username = state.Username ?? string.Empty,
-                Password = state.Password ?? string.Empty,
+                Password = UnprotectPassword(state.Password ?? string.Empty),
                 RememberMe = state.RememberMe,
                 AutoLogin = state.AutoLogin,
                 Shift = shift,
@@ -182,6 +188,60 @@ namespace CeraRegularize.Stores
                 LoginState = string.IsNullOrWhiteSpace(state.LoginState) ? "login_not_verified" : state.LoginState,
                 LoginMessage = string.IsNullOrWhiteSpace(state.LoginMessage) ? "Session Inactive" : state.LoginMessage,
             };
+        }
+
+        private static string ProtectPassword(string password)
+        {
+            if (string.IsNullOrEmpty(password))
+            {
+                return string.Empty;
+            }
+
+            if (password.StartsWith(ProtectedPrefix, StringComparison.Ordinal))
+            {
+                return password;
+            }
+
+            try
+            {
+                var bytes = Encoding.UTF8.GetBytes(password);
+                var protectedBytes = ProtectedData.Protect(bytes, ProtectedEntropy, DataProtectionScope.CurrentUser);
+                return ProtectedPrefix + Convert.ToBase64String(protectedBytes);
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private static string UnprotectPassword(string storedPassword)
+        {
+            if (string.IsNullOrEmpty(storedPassword))
+            {
+                return string.Empty;
+            }
+
+            if (!storedPassword.StartsWith(ProtectedPrefix, StringComparison.Ordinal))
+            {
+                return storedPassword;
+            }
+
+            var payload = storedPassword[ProtectedPrefix.Length..];
+            if (string.IsNullOrWhiteSpace(payload))
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                var protectedBytes = Convert.FromBase64String(payload);
+                var bytes = ProtectedData.Unprotect(protectedBytes, ProtectedEntropy, DataProtectionScope.CurrentUser);
+                return Encoding.UTF8.GetString(bytes);
+            }
+            catch
+            {
+                return string.Empty;
+            }
         }
     }
 }

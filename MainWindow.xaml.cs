@@ -64,7 +64,7 @@ namespace CeraRegularize
         private string? _lastCredentialFingerprint;
         private int _lastCredentialLength;
         private const string UpdateRepoUrl = "https://github.com/debtanum/CeraAttendance";
-        private const int AutoUpdateIntervalMinutes = 30;
+        private const int AutoUpdateIntervalMinutes = 12 * 60;
 
         public MainWindow()
         {
