@@ -514,12 +514,14 @@ namespace CeraRegularize
             {
                 AppLogger.LogInfo($"Submitting attendance: {selections.Count} date(s)", nameof(MainWindow));
                 await _automator.RegularizeDatesAsync(selections, statusCallback: HandleSubmissionStatus, cancellationToken: _submissionCts.Token).ConfigureAwait(true);
+                _homePage.SetSubmissionOverlay(false);
                 var snapshot = await RefreshAttendanceHistoryAsync("submit", true).ConfigureAwait(true);
                 NotifySubmissionResult(selections, snapshot);
             }
             catch (OperationCanceledException)
             {
                 AppLogger.LogInfo("Submission cancelled", nameof(MainWindow));
+                _homePage.SetSubmissionOverlay(false);
                 var snapshot = await RefreshAttendanceHistoryAsync("submit-cancelled", true).ConfigureAwait(true);
                 if (snapshot == null)
                 {
@@ -541,6 +543,7 @@ namespace CeraRegularize
                     "CeraRegularize",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
+                _homePage.SetSubmissionOverlay(false);
                 var snapshot = await RefreshAttendanceHistoryAsync("submit-failed", true).ConfigureAwait(true);
                 if (snapshot == null)
                 {
