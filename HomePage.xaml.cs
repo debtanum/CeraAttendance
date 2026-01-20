@@ -69,6 +69,12 @@ namespace CeraRegularize.Pages
             SubmissionOverlay.IsActive = active;
         }
 
+        public void SetSyncOverlay(bool active, string? message = null)
+        {
+            SyncOverlay.Message = message ?? string.Empty;
+            SyncOverlay.IsActive = active;
+        }
+
         public void ClearSelections()
         {
             Calendar.ClearSelections();
@@ -90,6 +96,8 @@ namespace CeraRegularize.Pages
         {
             Calendar.AttendanceOverlays = overlays ?? new Dictionary<DateTime, Tuple<string?, string?>>();
         }
+
+        public DateTime CurrentCalendarMonth => Calendar.CurrentMonth;
 
         private void UpdateActionButtons()
         {

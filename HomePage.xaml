@@ -20,6 +20,9 @@
         <!-- Bubble calendar occupies most of the page -->
         <Grid Grid.Row="0">
             <local:BubbleCalendarControl x:Name="Calendar" Loaded="Calendar_Loaded" />
+            <local:LoadingOverlay x:Name="SyncOverlay"
+                                  Panel.ZIndex="4"
+                                  CornerRadius="12" />
             <local:LoadingOverlay x:Name="SubmissionOverlay"
                                   Panel.ZIndex="5"
                                   CornerRadius="12" />

@@ -65,7 +65,7 @@ namespace CeraRegularize.Controls
         private void OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             // Only raise click if a valid date is set and the cell is enabled.
-            if (_date != null && _isCurrentMonth && _isSelectable)
+            if (_date != null && _isSelectable)
             {
                 DayClicked?.Invoke(this, _date);
             }

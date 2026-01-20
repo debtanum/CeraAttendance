@@ -192,6 +192,7 @@ namespace CeraRegularize.Controls
             }
             int diff = ((int)anchorDate.DayOfWeek - (int)firstDayOfWeek + 7) % 7;
             DateTime startDate = anchorDate.AddDays(-diff);
+            var (actionStart, actionEnd) = GetActionableRange(DateTime.Today);
             // Fill 42 cells (6 weeks).
             for (int i = 0; i < 42; i++)
             {
@@ -199,19 +200,19 @@ namespace CeraRegularize.Controls
                 bool inActiveRange = _isCeragonView && rangeStart.HasValue && rangeEnd.HasValue
                     ? cellDate >= rangeStart.Value && cellDate <= rangeEnd.Value
                     : cellDate.Month == CurrentMonth.Month;
-                var allowance = inActiveRange ? GetSelectionAllowance(cellDate) : SelectionAllowance.DenyAll();
-                if (inActiveRange)
-                {
-                    NormalizeSelectionForDate(cellDate, allowance);
-                }
+                bool inActionableRange = cellDate >= actionStart && cellDate <= actionEnd;
+                var allowance = inActionableRange
+                    ? GetSelectionAllowance(cellDate)
+                    : SelectionAllowance.DenyAll();
+                NormalizeSelectionForDate(cellDate, allowance);
                 var cell = new BubbleDayControl
                 {
                     Date = cellDate,
                     IsCurrentMonth = inActiveRange,
-                    IsSelectable = inActiveRange && allowance.Allow,
-                    Mode = inActiveRange && _dateModes.ContainsKey(cellDate) ? _dateModes[cellDate] : null,
-                    Length = inActiveRange && _dateLengths.TryGetValue(cellDate, out var length) ? length : AttendanceAutomator.DayLengthFull,
-                    AttendanceState = inActiveRange && _attendanceOverlays.ContainsKey(cellDate) ? _attendanceOverlays[cellDate] : null
+                    IsSelectable = inActionableRange && allowance.Allow,
+                    Mode = inActionableRange && _dateModes.ContainsKey(cellDate) ? _dateModes[cellDate] : null,
+                    Length = inActionableRange && _dateLengths.TryGetValue(cellDate, out var length) ? length : AttendanceAutomator.DayLengthFull,
+                    AttendanceState = inActionableRange && _attendanceOverlays.ContainsKey(cellDate) ? _attendanceOverlays[cellDate] : null
                 };
                 cell.DayClicked += (_, dt) =>
                 {
@@ -222,7 +223,7 @@ namespace CeraRegularize.Controls
                 };
                 cell.MouseRightButtonUp += (_, args) =>
                 {
-                    if (!cell.Date.HasValue || !cell.IsCurrentMonth || !cell.IsSelectable)
+                    if (!cell.Date.HasValue || !cell.IsSelectable)
                     {
                         return;
                     }
@@ -643,6 +644,15 @@ namespace CeraRegularize.Controls
         {
             var previous = currentMonth.AddMonths(-1);
             return new DateTime(previous.Year, previous.Month, 21);
+        }
+
+        private static (DateTime start, DateTime end) GetActionableRange(DateTime referenceDate)
+        {
+            var previous = referenceDate.AddMonths(-1);
+            var next = referenceDate.AddMonths(1);
+            var start = new DateTime(previous.Year, previous.Month, 21);
+            var end = new DateTime(next.Year, next.Month, 20);
+            return (start, end);
         }
 
         private static DateTime GetCeragonRangeEnd(DateTime currentMonth)

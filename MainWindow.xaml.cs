@@ -490,7 +490,7 @@ namespace CeraRegularize
 
             _homePage.SetSubmitEnabled(false);
             _homePage.SetCancelEnabled(true);
-            _homePage.SetSubmissionOverlay(true, string.Empty);
+            _homePage.SetSubmissionOverlay(true, "Preparing to submit...");
             _submissionInProgress = true;
             _submissionCancelling = false;
             _submissionCts?.Dispose();
@@ -760,6 +760,7 @@ namespace CeraRegularize
 
             _historyRefreshRunning = true;
             TopBarControl.SetSyncing(true);
+            _homePage.SetSyncOverlay(true, "Syncing Data...");
             try
             {
                 AppLogger.LogInfo($"Refreshing attendance history ({reason})", nameof(MainWindow));
@@ -782,6 +783,7 @@ namespace CeraRegularize
             }
             finally
             {
+                _homePage.SetSyncOverlay(false);
                 TopBarControl.SetSyncing(false);
                 _historyRefreshRunning = false;
             }

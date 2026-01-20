@@ -26,22 +26,11 @@ namespace CeraRegularize.Services
         public static (DateTime start, DateTime end) ComputeHistoryRange(DateTime? reference = null)
         {
             var today = (reference ?? DateTime.Today).Date;
-            int prevYear;
-            int prevMonth;
-            if (today.Month == 1)
-            {
-                prevYear = today.Year - 1;
-                prevMonth = 12;
-            }
-            else
-            {
-                prevYear = today.Year;
-                prevMonth = today.Month - 1;
-            }
+            var prevMonth = today.AddMonths(-1);
+            var nextMonth = today.AddMonths(1);
 
-            var startDay = Math.Min(21, DateTime.DaysInMonth(prevYear, prevMonth));
-            var rangeStart = new DateTime(prevYear, prevMonth, startDay);
-            var rangeEnd = new DateTime(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month));
+            var rangeStart = new DateTime(prevMonth.Year, prevMonth.Month, 21);
+            var rangeEnd = new DateTime(nextMonth.Year, nextMonth.Month, 20);
             return (rangeStart, rangeEnd);
         }
 
